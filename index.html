@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LÉXORA - A Arena de Jogos de Palavras & Torneios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/main.css?v=10">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+</head>
+<body>
+
+  <!-- Canvas de Partículas (Moedas, Confetes e Brilhos) -->
+  <canvas id="particlesCanvas"></canvas>
+
+  <!-- Container de Toasts -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Barra Superior de Navegação -->
+  <header class="top-nav">
+    <div class="logo-area" id="headerLogo">
+      <span class="logo-icon">🏛️</span>
+      <span class="logo-text">LÉX<span class="logo-sub">ORA</span></span>
+      <span class="logo-badge">ARENA</span>
+    </div>
+
+    <!-- Área de Sessão & Carteira -->
+    <div class="user-session-bar" id="userSessionBar">
+      <div class="balance-pill" id="balancePill">
+        <span class="balance-icon">💰</span>
+        <span class="balance-text" id="headerBalanceDisplay">R$ 1.000,00</span>
+        <button id="quickDepositBtn" class="pill-add-btn" title="Adicionar Saldo">+</button>
+      </div>
+
+      <!-- Deslogado -->
+      <div id="authLoggedOut" class="auth-group">
+        <button id="openLoginBtn" class="nav-btn auth-btn login">Entrar</button>
+        <button id="openRegisterBtn" class="nav-btn auth-btn register">Cadastrar</button>
+      </div>
+
+      <!-- Logado -->
+      <div id="authLoggedIn" class="auth-group logged-in" style="display: none;">
+        <div class="user-profile-badge">
+          <span class="user-avatar">👤</span>
+          <span id="loggedUsername">Jogador</span>
+        </div>
+        <button id="openWithdrawBtn" class="nav-btn wallet-btn withdraw" title="Sacar">💸</button>
+        <button id="openStoreBtn" class="nav-btn store-btn" title="Loja de Dicas">🛒</button>
+        <button id="logoutBtn" class="nav-btn logout" title="Sair">Sair</button>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <button id="bgmBtn" class="nav-btn bgm-btn" title="Trilha Sonora">🎵 Off</button>
+      <button id="soundBtn" class="nav-btn" title="Sons">🔊 SFX</button>
+      <button id="rulesBtn" class="nav-btn" title="Regras">📖 Regras</button>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       TELA 1: LOBBY VIEW (HUB PRINCIPAL)
+       ======================================================================== -->
+  <section class="app-screen active" id="screenLobby">
+    <div class="lobby-wrapper">
+
+      <!-- 👑 CARD DO GRANDE TORNEIO DIÁRIO DAS 21:00 -->
+      <div class="daily-major-hero" id="dailyMajorHero">
+        <div class="daily-glow-effect"></div>
+        <div class="daily-hero-content">
+          <div class="daily-tag">👑 EVENTO DIÁRIO DAS 21:00</div>
+          <h1 class="daily-hero-title">LÉXORA GRAND MAJOR</h1>
+          <p class="daily-hero-desc">Pote de <strong>R$ 1.000,00</strong> • 50 Competidores • Premiação para o TOP 5</p>
+          
+          <div class="daily-countdown-wrap">
+            <span class="countdown-title">INÍCIO EM:</span>
+            <span class="countdown-clock" id="dailyCountdown">02:12:45</span>
+          </div>
+
+          <button class="daily-hero-btn" id="dailyMajorJoinBtn" data-tournament-id="tour_daily_major">
+            🎟️ GARANTIR MEU TICKET • R$ 20,00
+          </button>
+        </div>
+      </div>
+
+      <!-- CARROSSEL DOS 4 JOGOS (CARDS MODERNOS) -->
+      <div class="games-hub-header">
+        <h2>🎮 Escolha seu Jogo de Habilidade</h2>
+        <span>Compita por prêmios em dinheiro com sua inteligência</span>
+      </div>
+
+      <div class="games-cards-grid">
+        <!-- Card 1: Quarteto Masters -->
+        <div class="game-card" data-game="quarteto">
+          <div class="game-card-icon">🧠</div>
+          <div class="game-card-info">
+            <h3>Quarteto Masters</h3>
+            <p>4 Palavras simultâneas de 5 letras em até 9 tentativas.</p>
+            <div class="game-card-meta">
+              <span class="meta-tag">Torneios 4 a 50p</span>
+              <span class="meta-prize">Potes até R$ 1.000</span>
+            </div>
+          </div>
+          <button class="game-play-btn" data-game="quarteto">Jogar Quarteto →</button>
+        </div>
+
+        <!-- Card 2: Contexto Arena -->
+        <div class="game-card" data-game="contexto">
+          <div class="game-card-icon">🌐</div>
+          <div class="game-card-info">
+            <h3>Contexto Arena</h3>
+            <p>Descubra a palavra secreta pela proximidade de significado quente/frio.</p>
+            <div class="game-card-meta">
+              <span class="meta-tag">Duelos & Salas</span>
+              <span class="meta-prize">Rank #1 a #50.000</span>
+            </div>
+          </div>
+          <button class="game-play-btn" data-game="contexto">Jogar Contexto →</button>
+        </div>
+
+        <!-- Card 3: Termo Blitz 1x1 -->
+        <div class="game-card" data-game="termo_blitz">
+          <div class="game-card-icon">⚡</div>
+          <div class="game-card-info">
+            <h3>Termo Blitz 1x1</h3>
+            <p>Duelo direto de velocidade em 1 palavra em até 60 segundos.</p>
+            <div class="game-card-meta">
+              <span class="meta-tag">Duelo 60s</span>
+              <span class="meta-prize">R$ 5 a R$ 25</span>
+            </div>
+          </div>
+          <button class="game-play-btn" data-game="termo_blitz">Jogar Termo Blitz →</button>
+        </div>
+
+        <!-- Card 4: Anagrama Rush -->
+        <div class="game-card" data-game="anagrama">
+          <div class="game-card-icon">🔤</div>
+          <div class="game-card-info">
+            <h3>Anagrama Rush</h3>
+            <p>Roda de 6 letras: forme o maior número de palavras em 90s.</p>
+            <div class="game-card-meta">
+              <span class="meta-tag">Velocidade 90s</span>
+              <span class="meta-prize">Potes R$ 40</span>
+            </div>
+          </div>
+          <button class="game-play-btn" data-game="anagrama">Jogar Anagrama →</button>
+        </div>
+      </div>
+
+      <!-- SALAS E TORNEIOS ATIVOS -->
+      <div class="rooms-section">
+        <div class="rooms-section-header">
+          <h3>🏆 Mesas e Torneios Rápidos (Sit & Go)</h3>
+          <span class="rooms-rake-tag">Rake 15-20% • Pagamento PIX Instantâneo</span>
+        </div>
+        <div class="rooms-grid" id="roomsGrid">
+          <!-- Injetado dinamicamente -->
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       TELA 2: ARENA VIEW (TELA DE PARTIDA 100% FOCADA E RESPONSIVA)
+       ======================================================================== -->
+  <section class="app-screen" id="screenArena" style="display: none;">
+    <!-- Top HUD da Partida -->
+    <div class="arena-hud-bar">
+      <button id="leaveArenaBtn" class="hud-back-btn">← Lobby</button>
+      <div class="hud-game-info">
+        <strong id="hudGameTitle">Quarteto Masters</strong>
+        <span id="hudGameSubtitle">Mesa Quádrupla • Pote R$ 40,00</span>
+      </div>
+      <div class="hud-stats-box">
+        <span class="hud-stat-label" id="hudStatLabel">CHUTES</span>
+        <span class="hud-stat-val" id="hudStatVal">0 / 9</span>
+      </div>
+    </div>
+
+    <!-- Container dos Palcos dos Jogos -->
+    <div class="arena-stage-container">
+
+      <!-- PALCO 1: QUARTETO MASTERS -->
+      <div class="game-arena-palco" id="palcoQuarteto">
+        <!-- Abas Mobile -->
+        <div class="mobile-view-tabs" id="mobileViewTabs">
+          <button class="view-tab-btn active" data-view="all">⊞ 2x2 Geral</button>
+          <button class="view-tab-btn" data-view="0">P1 <i class="tab-indicator" id="tabInd-0"></i></button>
+          <button class="view-tab-btn" data-view="1">P2 <i class="tab-indicator" id="tabInd-1"></i></button>
+          <button class="view-tab-btn" data-view="2">P3 <i class="tab-indicator" id="tabInd-2"></i></button>
+          <button class="view-tab-btn" data-view="3">P4 <i class="tab-indicator" id="tabInd-3"></i></button>
+        </div>
+
+        <div class="quarteto-stage view-all" id="quartetoStage">
+          <div class="quadrant-card" id="quadrant-0"><div class="quadrant-grid" id="grid-0"></div></div>
+          <div class="quadrant-card" id="quadrant-1"><div class="quadrant-grid" id="grid-1"></div></div>
+          <div class="quadrant-card" id="quadrant-2"><div class="quadrant-grid" id="grid-2"></div></div>
+          <div class="quadrant-card" id="quadrant-3"><div class="quadrant-grid" id="grid-3"></div></div>
+        </div>
+      </div>
+
+      <!-- PALCO 2: CONTEXTO ARENA -->
+      <div class="game-arena-palco" id="palcoContexto" style="display: none;">
+        <div class="contexto-container">
+          <div class="contexto-input-bar">
+            <input type="text" id="contextoInput" class="contexto-input" placeholder="Digite uma palavra..." maxlength="25" autocomplete="off">
+            <button id="contextoSubmitBtn" class="contexto-submit-btn">ENVIAR</button>
+          </div>
+
+          <div class="contexto-best-rank-card" id="contextoBestCard">
+            <span class="best-label">MELHOR PROXIMIDADE:</span>
+            <span class="best-rank" id="contextoBestRank">Nenhum chute</span>
+          </div>
+
+          <div class="contexto-guesses-list" id="contextoGuessesList"></div>
+        </div>
+      </div>
+
+      <!-- PALCO 3: TERMO BLITZ 1x1 -->
+      <div class="game-arena-palco" id="palcoTermoBlitz" style="display: none;">
+        <div class="termo-blitz-container">
+          <div class="blitz-timer-bar">
+            <div class="blitz-timer-box">
+              <span class="timer-label">TEMPO</span>
+              <span class="timer-value" id="blitzTimerDisplay">60s</span>
+            </div>
+            <div class="blitz-duel-vs">
+              <span class="vs-player user">Você</span>
+              <span class="vs-badge">VS</span>
+              <span class="vs-player opp" id="blitzOpponentName">Oponente</span>
+            </div>
+          </div>
+          <div class="termo-single-grid" id="termoSingleGrid"></div>
+        </div>
+      </div>
+
+      <!-- PALCO 4: ANAGRAMA RUSH -->
+      <div class="game-arena-palco" id="palcoAnagrama" style="display: none;">
+        <div class="anagrama-container">
+          <div class="anagrama-top-bar">
+            <div class="anagrama-score-box">
+              <span class="ana-label">PONTOS</span>
+              <span class="ana-val" id="anagramaScoreDisplay">0 pts</span>
+            </div>
+            <div class="anagrama-timer-box">
+              <span class="ana-label">TEMPO</span>
+              <span class="ana-val" id="anagramaTimerDisplay">90s</span>
+            </div>
+          </div>
+
+          <div class="anagrama-current-word" id="anagramaCurrentWord">
+            <span class="placeholder">Toque nas letras abaixo...</span>
+          </div>
+
+          <div class="anagrama-wheel" id="anagramaWheel"></div>
+
+          <div class="anagrama-controls">
+            <button id="anagramaShuffleBtn" class="ana-btn shuffle">🔀 Embaralhar</button>
+            <button id="anagramaClearBtn" class="ana-btn clear">⌫ Limpar</button>
+            <button id="anagramaSubmitBtn" class="ana-btn submit">✓ Enviar</button>
+          </div>
+
+          <div class="anagrama-found-words" id="anagramaFoundWords"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TECLADO VIRTUAL QWERTY (Para Quarteto e Termo Blitz) -->
+    <div class="virtual-keyboard-section" id="virtualKeyboardSection">
+      <div class="keyboard-row">
+        <button class="key-btn" data-key="Q">Q</button>
+        <button class="key-btn" data-key="W">W</button>
+        <button class="key-btn" data-key="E">E</button>
+        <button class="key-btn" data-key="R">R</button>
+        <button class="key-btn" data-key="T">T</button>
+        <button class="key-btn" data-key="Y">Y</button>
+        <button class="key-btn" data-key="U">U</button>
+        <button class="key-btn" data-key="I">I</button>
+        <button class="key-btn" data-key="O">O</button>
+        <button class="key-btn" data-key="P">P</button>
+      </div>
+      <div class="keyboard-row">
+        <button class="key-btn" data-key="A">A</button>
+        <button class="key-btn" data-key="S">S</button>
+        <button class="key-btn" data-key="D">D</button>
+        <button class="key-btn" data-key="F">F</button>
+        <button class="key-btn" data-key="G">G</button>
+        <button class="key-btn" data-key="H">H</button>
+        <button class="key-btn" data-key="J">J</button>
+        <button class="key-btn" data-key="K">K</button>
+        <button class="key-btn" data-key="L">L</button>
+      </div>
+      <div class="keyboard-row">
+        <button class="key-btn action-key enter" data-key="ENTER">ENTER</button>
+        <button class="key-btn" data-key="Z">Z</button>
+        <button class="key-btn" data-key="X">X</button>
+        <button class="key-btn" data-key="C">C</button>
+        <button class="key-btn" data-key="V">V</button>
+        <button class="key-btn" data-key="B">B</button>
+        <button class="key-btn" data-key="N">N</button>
+        <button class="key-btn" data-key="M">M</button>
+        <button class="key-btn action-key backspace" data-key="BACKSPACE">⌫</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       MODAIS DO SISTEMA
+       ======================================================================== -->
+
+  <!-- Modal da Loja de Dicas & Power-Ups -->
+  <div id="storeModal" class="modal-overlay">
+    <div class="modal-card store-card">
+      <div class="modal-header">
+        <h2>🛒 Loja de Dicas & Power-Ups LÉXORA</h2>
+        <button class="modal-close" id="closeStoreModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="store-subtitle">Aumente suas chances nos torneios de forma 100% legal!</p>
+        <div class="store-grid">
+          <div class="store-item">
+            <span class="store-icon">🟩</span>
+            <div class="store-info">
+              <strong>Dica de Letra Verde</strong>
+              <small>Revela 1 letra na posição correta</small>
+            </div>
+            <button class="buy-powerup-btn" data-powerup="HINT_GREEN" data-price="1.99">R$ 1,99</button>
+          </div>
+          <div class="store-item">
+            <span class="store-icon">🌐</span>
+            <div class="store-info">
+              <strong>Dica Semântica Contexto</strong>
+              <small>Revela o tema ou uma palavra do Top 50</small>
+            </div>
+            <button class="buy-powerup-btn" data-powerup="HINT_CONTEXTO" data-price="2.49">R$ 2,49</button>
+          </div>
+          <div class="store-item">
+            <span class="store-icon">🧹</span>
+            <div class="store-info">
+              <strong>Eliminar 3 Letras</strong>
+              <small>Remove 3 teclas inúteis do teclado</small>
+            </div>
+            <button class="buy-powerup-btn" data-powerup="ELIMINATE_3" data-price="1.49">R$ 1,49</button>
+          </div>
+          <div class="store-item">
+            <span class="store-icon">🎯</span>
+            <div class="store-info">
+              <strong>Tentativa Extra (+1 Chute)</strong>
+              <small>Ganha uma chance adicional</small>
+            </div>
+            <button class="buy-powerup-btn" data-powerup="EXTRA_ATTEMPT" data-price="2.99">R$ 2,99</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Pódio e Resultado do Torneio -->
+  <div id="resultModal" class="modal-overlay">
+    <div class="modal-card result-card">
+      <div class="modal-header">
+        <h2 id="resultTitle">🏆 Fim da Partida</h2>
+        <button class="modal-close" id="closeResultModalBtn">&times;</button>
+      </div>
+      <div class="modal-body result-body">
+        <div class="result-icon-banner" id="resultBanner">🥇</div>
+        <h3 id="resultHeading" class="result-heading">1º LUGAR CONQUISTADO!</h3>
+        <p id="resultMessage" class="result-message"></p>
+
+        <div class="payout-showcase-box" id="payoutBox">
+          <span class="payout-label">PRÊMIO PIX CREDITADO</span>
+          <span class="payout-value" id="payoutValue">R$ 0,00</span>
+        </div>
+
+        <div class="secret-words-reveal-box" id="secretsRevealBox">
+          <span class="reveal-label">Palavras Secretas:</span>
+          <div class="secrets-chips" id="secretsChips"></div>
+        </div>
+
+        <div class="result-actions">
+          <button id="playAgainBtn" class="action-btn primary-action">Jogar Novamente</button>
+          <button id="backToLobbyBtn" class="action-btn secondary-action">Voltar ao Lobby</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Autenticação -->
+  <div id="authModal" class="modal-overlay">
+    <div class="modal-card auth-modal-card">
+      <div class="modal-header">
+        <h2 id="authModalTitle">Entrar na LÉXORA ARENA</h2>
+        <button class="modal-close" id="closeAuthModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="authForm" class="auth-form">
+          <div class="form-group" id="usernameGroup" style="display: none;">
+            <label for="authUsername">Nome de Usuário</label>
+            <input type="text" id="authUsername" placeholder="Ex: MestreDasPalavras">
+          </div>
+          <div class="form-group">
+            <label for="authEmail">E-mail ou Usuário</label>
+            <input type="text" id="authEmail" placeholder="seu@email.com" required>
+          </div>
+          <div class="form-group">
+            <label for="authPassword">Senha</label>
+            <input type="password" id="authPassword" placeholder="••••••••" required>
+          </div>
+          <button type="submit" id="authSubmitBtn" class="action-btn primary-action full-width">Entrar</button>
+        </form>
+        <div class="auth-toggle-link">
+          <span id="authToggleText">Ainda não tem conta?</span>
+          <a href="#" id="authToggleBtn">Cadastre-se grátis</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Depósito PIX Sandbox -->
+  <div id="depositModal" class="modal-overlay">
+    <div class="modal-card deposit-card">
+      <div class="modal-header">
+        <h2>⚡ Depósito Instantâneo via PIX</h2>
+        <button class="modal-close" id="closeDepositModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="depositStep1">
+          <label>Selecione o valor para jogar torneios:</label>
+          <div class="preset-deposit-grid">
+            <button class="preset-dep-btn" data-val="10">R$ 10</button>
+            <button class="preset-dep-btn active" data-val="20">R$ 20</button>
+            <button class="preset-dep-btn" data-val="50">R$ 50</button>
+            <button class="preset-dep-btn" data-val="100">R$ 100</button>
+          </div>
+          <div class="form-group">
+            <label for="customDepositVal">Outro valor (R$):</label>
+            <input type="number" id="customDepositVal" value="20" min="5" max="1000" step="5">
+          </div>
+          <button id="generatePixBtn" class="action-btn primary-action full-width">Gerar Cobrança PIX</button>
+        </div>
+
+        <div id="depositStep2" style="display: none;" class="pix-payment-box">
+          <div class="pix-qr-sim">
+            <span class="qr-icon">📱</span>
+            <strong>PIX QR CODE PRONTO</strong>
+          </div>
+          <div class="pix-copy-paste-box">
+            <input type="text" id="pixCodeInput" readonly value="00020126580014br.gov.bcb.pix...">
+            <button id="copyPixBtn" class="copy-btn">Copiar</button>
+          </div>
+          <p class="pix-timer-alert">Simulação Sandbox: Clique abaixo para confirmar pagamento instantâneo.</p>
+          <button id="simulatePixPaymentBtn" class="action-btn confirm-action full-width">
+            ⚡ Simular Pagamento Concluído (Aprovar)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Saque PIX -->
+  <div id="withdrawModal" class="modal-overlay">
+    <div class="modal-card withdraw-card">
+      <div class="modal-header">
+        <h2>💸 Solicitar Saque via PIX</h2>
+        <button class="modal-close" id="closeWithdrawModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="withdrawAmount">Valor do Saque (R$):</label>
+          <input type="number" id="withdrawAmount" placeholder="Ex: 50.00" min="10" step="5">
+        </div>
+        <div class="form-group">
+          <label for="pixKeyType">Tipo de Chave PIX:</label>
+          <select id="pixKeyType">
+            <option value="CPF">CPF</option>
+            <option value="EMAIL">E-mail</option>
+            <option value="TELEFONE">Telefone</option>
+            <option value="ALEATORIA">Chave Aleatória</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="pixKey">Chave PIX:</label>
+          <input type="text" id="pixKey" placeholder="Digite sua chave PIX...">
+        </div>
+        <button id="confirmWithdrawBtn" class="action-btn confirm-action full-width">Confirmar Saque PIX</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Regras -->
+  <div id="rulesModal" class="modal-overlay">
+    <div class="modal-card rules-card">
+      <div class="modal-header">
+        <h2>📖 Como Jogar na LÉXORA ARENA</h2>
+        <button class="modal-close" id="closeRulesModalBtn">&times;</button>
+      </div>
+      <div class="modal-body rules-body">
+        <h3>🧠 Quarteto Masters</h3>
+        <p>4 tabuleiros simultâneos de 5 letras em 9 tentativas. 🟩 Verde = letra certa. 🟨 Amarelo = existe na palavra. ⬛ Cinza = ausente.</p>
+        <h3>🌐 Contexto Arena</h3>
+        <p>Adivinhe a palavra secreta pela proximidade semântica (Rank #1 a #50.000). 🟢 Top 300 está muito perto!</p>
+        <h3>⚡ Termo Blitz 1x1</h3>
+        <p>Duelo veloz de 1 palavra em 60 segundos. Quem acertar primeiro leva o pote!</p>
+        <h3>🔤 Anagrama Rush</h3>
+        <p>90 segundos para formar o máximo de palavras válidas com 6 letras.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts Modular ES6 -->
+  <script type="module" src="scripts/app.js?v=10"></script>
+</body>
+</html>
