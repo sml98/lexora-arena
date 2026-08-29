@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#09070f">
   <meta name="description" content="Léxora — arena brasileira de jogos de palavras.">
   <title>Léxora — Arena de palavras</title>
-  <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/main.css?v=5">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -40,6 +40,13 @@
 
       <section class="games-section">
         <div class="section-heading"><div><span class="eyebrow">ESCOLHA SEU DESAFIO</span><h2>Arenas abertas agora</h2></div><p>Partidas rápidas. Habilidade real.</p></div>
+        <div class="language-switch" aria-label="Idioma das palavras">
+          <span>IDIOMA DA RODADA</span>
+          <button data-language="pt">🇧🇷 Português</button>
+          <button data-language="en">🇺🇸 English</button>
+          <button class="active" data-language="mixed">🌐 Misto</button>
+        </div>
+        <p class="language-stock" id="languageStock">Carregando o estoque linguístico…</p>
         <div class="game-grid">
           <article class="game-card violet"><span class="game-icon">◆</span><span class="live">AO VIVO</span><h3>Quarteto Masters</h3><p>Descubra quatro palavras com lógica e estratégia.</p><div class="card-bottom"><b>R$ 5</b><button data-game="quarteto">Jogar →</button></div></article>
           <article class="game-card cyan"><span class="game-icon">◎</span><span class="live">AO VIVO</span><h3>Contexto</h3><p>Aproxime-se da palavra secreta por significado.</p><div class="card-bottom"><b>R$ 3</b><button data-game="contexto">Jogar →</button></div></article>
@@ -61,6 +68,6 @@
 
   <div class="modal" id="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="close" id="closeModal" aria-label="Fechar">×</button><span class="modal-icon" id="modalIcon">✦</span><h2 id="modalTitle">Tudo certo!</h2><p id="modalText"></p><button class="primary full" id="modalAction">Continuar</button></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="scripts/app.js"></script>
+  <script type="module" src="scripts/app.js?v=5"></script>
 </body>
 </html>
