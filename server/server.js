@@ -57,7 +57,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PUBLIC_DIR = path.join(__dirname, '..');
 
-const PORT = process.env.PORT || 8080;
+const DEFAULT_PORT = 8080;
+const requestedPort = Number.parseInt(process.env.PORT, 10);
+let activePort = Number.isInteger(requestedPort) ? requestedPort : DEFAULT_PORT;
+const MAX_PORT_ATTEMPTS = 10;
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -524,7 +527,13 @@ const server = http.createServer(async (req, res) => {
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
       const fileStream = fs.createReadStream(filePath);
 
-      res.writeHead(200, { 'Content-Type': contentType });
+      const cacheControl = ext === '.html'
+        ? 'no-cache'
+        : 'public, max-age=300, must-revalidate';
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Cache-Control': cacheControl
+      });
       fileStream.pipe(res);
       return;
     }
@@ -537,8 +546,34 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🧠 Quarteto Bet Backend rodando em http://localhost:${PORT}`);
+function startServer(attempt = 1) {
+  server.listen(activePort, '0.0.0.0');
+
+  server.once('error', error => {
+    if (error.code !== 'EADDRINUSE') throw error;
+
+    if (process.env.PORT || attempt >= MAX_PORT_ATTEMPTS) {
+      console.error(`\n❌ A porta ${activePort} já está em uso.`);
+      console.error(`   Encerre o processo com: fuser -k ${activePort}/tcp`);
+      console.error(`   Ou escolha outra porta: PORT=${activePort + 1} node server/server.js\n`);
+      process.exitCode = 1;
+      return;
+    }
+
+    const occupiedPort = activePort;
+    activePort += 1;
+    console.warn(`⚠️  Porta ${occupiedPort} ocupada. Tentando http://localhost:${activePort}...`);
+    startServer(attempt + 1);
+  });
+}
+
+server.on('listening', () => {
+  console.log(`🧠 LÉXORA ARENA rodando em http://localhost:${activePort}`);
+  if (activePort !== DEFAULT_PORT) {
+    console.log(`ℹ️  A porta ${DEFAULT_PORT} já estava ocupada; foi utilizada a porta ${activePort}.`);
+  }
 });
+
+startServer();
 
 export { server };

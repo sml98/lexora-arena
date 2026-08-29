@@ -145,6 +145,7 @@ export class UIManager {
     tournaments.filter(t => !t.is_daily_major).forEach(t => {
       const card = document.createElement('div');
       card.className = 'room-card';
+      card.dataset.game = t.game_type;
 
       const gameIcons = {
         quarteto: '🧠',
@@ -156,16 +157,17 @@ export class UIManager {
 
       card.innerHTML = `
         <div class="room-card-header">
-          <span class="room-title">${icon} ${t.title}</span>
+          <span class="room-title"><i>${icon}</i>${t.title}</span>
           <span class="room-players">👥 ${t.registered_count || 0}/${t.max_players}</span>
         </div>
+        <div class="room-occupancy"><i style="width: ${Math.min(100, ((t.registered_count || 0) / t.max_players) * 100)}%"></i></div>
         <div class="room-card-body">
           <div class="room-pot-box">
-            <span class="room-pot-label">Pote da Mesa</span>
+            <span class="room-pot-label">PRÊMIO DA MESA</span>
             <span class="room-pot-val">R$ ${t.prize_pot.toFixed(2)}</span>
           </div>
           <button class="room-join-btn" data-id="${t.id}">
-            Entrar • R$ ${t.entry_fee.toFixed(2)}
+            R$ ${t.entry_fee.toFixed(2)} <span>Entrar →</span>
           </button>
         </div>
       `;
@@ -176,6 +178,11 @@ export class UIManager {
 
       grid.appendChild(card);
     });
+
+    const emptyState = document.createElement('p');
+    emptyState.className = 'rooms-empty-state';
+    emptyState.textContent = 'Nenhuma arena deste modo está aberta agora.';
+    grid.appendChild(emptyState);
   }
 
   /* ARENA 2: CONTEXTO */
