@@ -34,6 +34,17 @@ node server/server.js
 ```
 O servidor estará rodando em: `http://localhost:8080`
 
+Se a porta `8080` já estiver ocupada, o servidor tenta automaticamente as
+próximas portas disponíveis (`8081`, `8082`, etc.) e mostra no terminal a URL
+correta para abrir. Para encerrar uma instância antiga manualmente, execute:
+
+```bash
+fuser -k 8080/tcp
+```
+
+O aviso `ExperimentalWarning: SQLite is an experimental feature` exibido pelo
+Node.js 22 é informativo e não impede a inicialização do projeto.
+
 ### 2. Rodar os Testes Automatizados:
 ```bash
 node tests/lexora-ecosystem.test.js

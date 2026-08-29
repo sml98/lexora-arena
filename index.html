@@ -2,12 +2,12 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>LÉXORA - A Arena de Jogos de Palavras & Torneios</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/main.css?v=10">
+  <link rel="stylesheet" href="styles/main.css?v=14">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
 </head>
 <body>
@@ -16,22 +16,29 @@
   <canvas id="particlesCanvas"></canvas>
 
   <!-- Container de Toasts -->
-  <div id="toastContainer" class="toast-container"></div>
+  <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <!-- Barra Superior de Navegação -->
   <header class="top-nav">
-    <div class="logo-area" id="headerLogo">
-      <span class="logo-icon">🏛️</span>
+    <div class="logo-area" id="headerLogo" role="button" tabindex="0" aria-label="Voltar ao lobby da Léxora">
+      <span class="logo-icon" aria-hidden="true"><svg viewBox="0 0 44 44"><path d="M22 3 39 11v22L22 41 5 33V11Z"/><path d="M14 13v18h17M14 22h13"/></svg></span>
       <span class="logo-text">LÉX<span class="logo-sub">ORA</span></span>
       <span class="logo-badge">ARENA</span>
     </div>
+
+    <nav class="main-nav" aria-label="Navegação principal">
+      <button class="main-nav-link active" data-scroll-target="screenLobby">Arena</button>
+      <button class="main-nav-link" data-scroll-target="gamesHub">Jogos</button>
+      <button class="main-nav-link" data-scroll-target="roomsSection">Torneios</button>
+      <button class="main-nav-link" data-scroll-target="rankingPanel">Ranking</button>
+    </nav>
 
     <!-- Área de Sessão & Carteira -->
     <div class="user-session-bar" id="userSessionBar">
       <div class="balance-pill" id="balancePill">
         <span class="balance-icon">💰</span>
         <span class="balance-text" id="headerBalanceDisplay">R$ 1.000,00</span>
-        <button id="quickDepositBtn" class="pill-add-btn" title="Adicionar Saldo">+</button>
+        <button id="quickDepositBtn" class="pill-add-btn" title="Adicionar saldo" aria-label="Adicionar saldo">+</button>
       </div>
 
       <!-- Deslogado -->
@@ -69,32 +76,55 @@
       <div class="daily-major-hero" id="dailyMajorHero">
         <div class="daily-glow-effect"></div>
         <div class="daily-hero-content">
-          <div class="daily-tag">👑 EVENTO DIÁRIO DAS 21:00</div>
-          <h1 class="daily-hero-title">LÉXORA GRAND MAJOR</h1>
-          <p class="daily-hero-desc">Pote de <strong>R$ 1.000,00</strong> • 50 Competidores • Premiação para o TOP 5</p>
-          
-          <div class="daily-countdown-wrap">
-            <span class="countdown-title">INÍCIO EM:</span>
-            <span class="countdown-clock" id="dailyCountdown">02:12:45</span>
+          <div class="daily-hero-copy">
+            <div class="daily-tag"><span class="status-dot"></span> EVENTO DIÁRIO • 21:00</div>
+            <h1 class="daily-hero-title">Sua próxima vitória<br><span>começa com uma palavra.</span></h1>
+            <p class="daily-hero-desc">Entre no <strong>LÉXORA Grand Major</strong> e dispute um pote de R$ 1.000 com os melhores jogadores da arena.</p>
+            <div class="daily-stats" aria-label="Detalhes do torneio">
+              <div><strong>R$ 1.000</strong><span>Premiação</span></div>
+              <div><strong>50</strong><span>Competidores</span></div>
+              <div><strong>TOP 5</strong><span>Premiados</span></div>
+            </div>
           </div>
-
-          <button class="daily-hero-btn" id="dailyMajorJoinBtn" data-tournament-id="tour_daily_major">
-            🎟️ GARANTIR MEU TICKET • R$ 20,00
-          </button>
+          <div class="daily-hero-action">
+            <div class="major-players">
+              <div class="avatar-stack" aria-label="Jogadores já inscritos">
+                <span>AM</span><span>R7</span><span>LU</span><span>+34</span>
+              </div>
+              <strong><span id="dailyRegisteredCount">38</span> jogadores na arena</strong>
+            </div>
+            <div class="daily-countdown-wrap">
+              <span class="countdown-title">PRÓXIMA ARENA EM</span>
+              <span class="countdown-clock" id="dailyCountdown" role="timer">02:12:45</span>
+            </div>
+            <button class="daily-hero-btn" id="dailyMajorJoinBtn" data-tournament-id="tour_daily_major">
+              Garantir entrada <span>R$ 20,00 →</span>
+            </button>
+            <div class="major-capacity"><span><i id="majorCapacityBar"></i></span><small><b id="dailyRemainingCount">12 vagas</b> restantes • PIX seguro</small></div>
+          </div>
         </div>
       </div>
 
+      <div class="trust-strip" aria-label="Benefícios da plataforma">
+        <span>⚡ Partidas rápidas</span><span>🧠 Habilidade, não sorte</span>
+        <span>🏆 Ranking em tempo real</span><span>✓ Saque via PIX</span>
+      </div>
+
       <!-- CARROSSEL DOS 4 JOGOS (CARDS MODERNOS) -->
-      <div class="games-hub-header">
-        <h2>🎮 Escolha seu Jogo de Habilidade</h2>
-        <span>Compita por prêmios em dinheiro com sua inteligência</span>
+      <div class="games-hub-header" id="gamesHub">
+        <div>
+          <span class="section-eyebrow">MODOS DE JOGO</span>
+          <h2>Encontre a sua arena</h2>
+        </div>
+        <span>Quatro desafios. Infinitas estratégias.</span>
       </div>
 
       <div class="games-cards-grid">
         <!-- Card 1: Quarteto Masters -->
-        <div class="game-card" data-game="quarteto">
-          <div class="game-card-icon">🧠</div>
+        <div class="game-card game-quarteto" data-game="quarteto">
+          <div class="game-visual" aria-hidden="true"><div class="mini-word-grid"><span>L</span><span>É</span><span>X</span><span>O</span><span>R</span><span>A</span><span>R</span><span>E</span><span>N</span><span>A</span></div><i>ESTRATÉGIA</i></div>
           <div class="game-card-info">
+            <span class="game-level">COMPETITIVO</span>
             <h3>Quarteto Masters</h3>
             <p>4 Palavras simultâneas de 5 letras em até 9 tentativas.</p>
             <div class="game-card-meta">
@@ -106,9 +136,10 @@
         </div>
 
         <!-- Card 2: Contexto Arena -->
-        <div class="game-card" data-game="contexto">
-          <div class="game-card-icon">🌐</div>
+        <div class="game-card game-contexto" data-game="contexto">
+          <div class="game-visual semantic-orbit" aria-hidden="true"><span>PALAVRA</span><i></i><i></i><i></i></div>
           <div class="game-card-info">
+            <span class="game-level">SEMÂNTICA</span>
             <h3>Contexto Arena</h3>
             <p>Descubra a palavra secreta pela proximidade de significado quente/frio.</p>
             <div class="game-card-meta">
@@ -120,9 +151,10 @@
         </div>
 
         <!-- Card 3: Termo Blitz 1x1 -->
-        <div class="game-card" data-game="termo_blitz">
-          <div class="game-card-icon">⚡</div>
+        <div class="game-card game-blitz" data-game="termo_blitz">
+          <div class="game-visual blitz-visual" aria-hidden="true"><b>00:42</b><span>VOCÊ</span><i>VS</i><span>RIVAL</span></div>
           <div class="game-card-info">
+            <span class="game-level">VELOCIDADE</span>
             <h3>Termo Blitz 1x1</h3>
             <p>Duelo direto de velocidade em 1 palavra em até 60 segundos.</p>
             <div class="game-card-meta">
@@ -134,9 +166,10 @@
         </div>
 
         <!-- Card 4: Anagrama Rush -->
-        <div class="game-card" data-game="anagrama">
-          <div class="game-card-icon">🔤</div>
+        <div class="game-card game-anagrama" data-game="anagrama">
+          <div class="game-visual ana-visual" aria-hidden="true"><span>L</span><span>É</span><span>X</span><span>O</span><span>R</span><span>A</span></div>
           <div class="game-card-info">
+            <span class="game-level">CRIATIVIDADE</span>
             <h3>Anagrama Rush</h3>
             <p>Roda de 6 letras: forme o maior número de palavras em 90s.</p>
             <div class="game-card-meta">
@@ -149,27 +182,53 @@
       </div>
 
       <!-- SALAS E TORNEIOS ATIVOS -->
-      <div class="rooms-section">
+      <div class="lobby-dashboard">
+      <div class="rooms-section" id="roomsSection">
         <div class="rooms-section-header">
-          <h3>🏆 Mesas e Torneios Rápidos (Sit & Go)</h3>
-          <span class="rooms-rake-tag">Rake 15-20% • Pagamento PIX Instantâneo</span>
+          <div><span class="section-eyebrow">MATCHMAKING AO VIVO</span><h3>Mesas abertas agora</h3></div>
+          <span class="live-label"><i></i> AO VIVO</span>
+        </div>
+        <div class="room-filters" role="group" aria-label="Filtrar salas">
+          <button class="room-filter active" data-room-filter="all">Todos</button>
+          <button class="room-filter" data-room-filter="quarteto">Quarteto</button>
+          <button class="room-filter" data-room-filter="contexto">Contexto</button>
+          <button class="room-filter" data-room-filter="termo_blitz">Blitz</button>
+          <button class="room-filter" data-room-filter="anagrama">Anagrama</button>
         </div>
         <div class="rooms-grid" id="roomsGrid">
           <!-- Injetado dinamicamente -->
         </div>
       </div>
 
+      <aside class="player-command" id="rankingPanel">
+        <div class="command-head"><span class="section-eyebrow">CENTRAL DO JOGADOR</span><strong>Temporada Zero</strong></div>
+        <div class="league-card"><div class="league-emblem">LX</div><div><span>SUA LIGA</span><strong>OURO III</strong><small>1.840 XP</small></div></div>
+        <div class="xp-track"><span><i></i></span><small>160 XP para Ouro II</small></div>
+        <div class="weekly-ranking"><div class="ranking-title"><strong>Ranking semanal</strong><span>Ver todos →</span></div><ol><li><b>1</b><i>AL</i><span>AnaLex</span><strong>9.820</strong></li><li><b>2</b><i>MX</i><span>MestreX</span><strong>9.410</strong></li><li><b>3</b><i>BR</i><span>BrunoR</span><strong>8.990</strong></li></ol><div class="your-rank"><b>18</b><i>EU</i><span>Você</span><strong>5.720</strong></div></div>
+        <div class="daily-mission"><span>MISSÃO DIÁRIA</span><strong>🔥 Vença 2 partidas</strong><div><i></i></div><small>1/2 • +250 XP</small></div>
+      </aside>
+      </div>
+
     </div>
   </section>
+
+  <nav class="mobile-bottom-nav" aria-label="Navegação mobile">
+    <button class="active" data-scroll-target="screenLobby"><span>⌂</span>Início</button>
+    <button data-scroll-target="gamesHub"><span>◇</span>Jogos</button>
+    <button data-scroll-target="roomsSection"><span>△</span>Torneios</button>
+    <button data-scroll-target="rankingPanel"><span>○</span>Perfil</button>
+  </nav>
 
   <!-- ========================================================================
        TELA 2: ARENA VIEW (TELA DE PARTIDA 100% FOCADA E RESPONSIVA)
        ======================================================================== -->
   <section class="app-screen" id="screenArena" style="display: none;">
+    <div class="arena-ambient" aria-hidden="true"><i></i><i></i><i></i></div>
     <!-- Top HUD da Partida -->
     <div class="arena-hud-bar">
-      <button id="leaveArenaBtn" class="hud-back-btn">← Lobby</button>
+      <button id="leaveArenaBtn" class="hud-back-btn"><span>←</span> Lobby</button>
       <div class="hud-game-info">
+        <span class="hud-live"><i></i> PARTIDA AO VIVO</span>
         <strong id="hudGameTitle">Quarteto Masters</strong>
         <span id="hudGameSubtitle">Mesa Quádrupla • Pote R$ 40,00</span>
       </div>
@@ -177,6 +236,7 @@
         <span class="hud-stat-label" id="hudStatLabel">CHUTES</span>
         <span class="hud-stat-val" id="hudStatVal">0 / 9</span>
       </div>
+      <div class="hud-progress" aria-hidden="true"><i id="hudProgressBar"></i></div>
     </div>
 
     <!-- Container dos Palcos dos Jogos -->
@@ -184,6 +244,7 @@
 
       <!-- PALCO 1: QUARTETO MASTERS -->
       <div class="game-arena-palco" id="palcoQuarteto">
+        <div class="arena-mode-intro"><div><span>DECODIFICAÇÃO MÚLTIPLA</span><strong>Resolva os 4 núcleos</strong></div><small><i></i> Sincronizado</small></div>
         <!-- Abas Mobile -->
         <div class="mobile-view-tabs" id="mobileViewTabs">
           <button class="view-tab-btn active" data-view="all">⊞ 2x2 Geral</button>
@@ -194,16 +255,18 @@
         </div>
 
         <div class="quarteto-stage view-all" id="quartetoStage">
-          <div class="quadrant-card" id="quadrant-0"><div class="quadrant-grid" id="grid-0"></div></div>
-          <div class="quadrant-card" id="quadrant-1"><div class="quadrant-grid" id="grid-1"></div></div>
-          <div class="quadrant-card" id="quadrant-2"><div class="quadrant-grid" id="grid-2"></div></div>
-          <div class="quadrant-card" id="quadrant-3"><div class="quadrant-grid" id="grid-3"></div></div>
+          <div class="quadrant-card" id="quadrant-0"><div class="quadrant-head"><span>NÚCLEO 01</span><i id="status-0">Em jogo</i></div><div class="quadrant-grid" id="grid-0"></div></div>
+          <div class="quadrant-card" id="quadrant-1"><div class="quadrant-head"><span>NÚCLEO 02</span><i id="status-1">Em jogo</i></div><div class="quadrant-grid" id="grid-1"></div></div>
+          <div class="quadrant-card" id="quadrant-2"><div class="quadrant-head"><span>NÚCLEO 03</span><i id="status-2">Em jogo</i></div><div class="quadrant-grid" id="grid-2"></div></div>
+          <div class="quadrant-card" id="quadrant-3"><div class="quadrant-head"><span>NÚCLEO 04</span><i id="status-3">Em jogo</i></div><div class="quadrant-grid" id="grid-3"></div></div>
         </div>
       </div>
 
       <!-- PALCO 2: CONTEXTO ARENA -->
       <div class="game-arena-palco" id="palcoContexto" style="display: none;">
         <div class="contexto-container">
+          <div class="contexto-radar" aria-hidden="true"><i></i><i></i><i></i><span>?</span></div>
+          <div class="arena-mode-intro"><div><span>MAPA SEMÂNTICO</span><strong>Encontre o núcleo da ideia</strong></div><small><i></i> 50.000 vetores</small></div>
           <div class="contexto-input-bar">
             <input type="text" id="contextoInput" class="contexto-input" placeholder="Digite uma palavra..." maxlength="25" autocomplete="off">
             <button id="contextoSubmitBtn" class="contexto-submit-btn">ENVIAR</button>
@@ -221,6 +284,7 @@
       <!-- PALCO 3: TERMO BLITZ 1x1 -->
       <div class="game-arena-palco" id="palcoTermoBlitz" style="display: none;">
         <div class="termo-blitz-container">
+          <div class="arena-mode-intro"><div><span>DUELO LEXICAL</span><strong>Supere o rival em 60 segundos</strong></div><small><i></i> Conectado</small></div>
           <div class="blitz-timer-bar">
             <div class="blitz-timer-box">
               <span class="timer-label">TEMPO</span>
@@ -239,6 +303,7 @@
       <!-- PALCO 4: ANAGRAMA RUSH -->
       <div class="game-arena-palco" id="palcoAnagrama" style="display: none;">
         <div class="anagrama-container">
+          <div class="arena-mode-intro"><div><span>MATRIZ DE LETRAS</span><strong>Construa, combine, pontue</strong></div><small><i></i> Combo x1</small></div>
           <div class="anagrama-top-bar">
             <div class="anagrama-score-box">
               <span class="ana-label">PONTOS</span>
@@ -312,7 +377,7 @@
        ======================================================================== -->
 
   <!-- Modal da Loja de Dicas & Power-Ups -->
-  <div id="storeModal" class="modal-overlay">
+  <div id="storeModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Loja de dicas e power-ups">
     <div class="modal-card store-card">
       <div class="modal-header">
         <h2>🛒 Loja de Dicas & Power-Ups LÉXORA</h2>
@@ -359,7 +424,7 @@
   </div>
 
   <!-- Modal de Pódio e Resultado do Torneio -->
-  <div id="resultModal" class="modal-overlay">
+  <div id="resultModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <div class="modal-card result-card">
       <div class="modal-header">
         <h2 id="resultTitle">🏆 Fim da Partida</h2>
@@ -389,7 +454,7 @@
   </div>
 
   <!-- Modal de Autenticação -->
-  <div id="authModal" class="modal-overlay">
+  <div id="authModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
     <div class="modal-card auth-modal-card">
       <div class="modal-header">
         <h2 id="authModalTitle">Entrar na LÉXORA ARENA</h2>
@@ -420,7 +485,7 @@
   </div>
 
   <!-- Modal de Depósito PIX Sandbox -->
-  <div id="depositModal" class="modal-overlay">
+  <div id="depositModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Depósito instantâneo via PIX">
     <div class="modal-card deposit-card">
       <div class="modal-header">
         <h2>⚡ Depósito Instantâneo via PIX</h2>
@@ -461,7 +526,7 @@
   </div>
 
   <!-- Modal de Saque PIX -->
-  <div id="withdrawModal" class="modal-overlay">
+  <div id="withdrawModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Solicitar saque via PIX">
     <div class="modal-card withdraw-card">
       <div class="modal-header">
         <h2>💸 Solicitar Saque via PIX</h2>
@@ -491,7 +556,7 @@
   </div>
 
   <!-- Modal de Regras -->
-  <div id="rulesModal" class="modal-overlay">
+  <div id="rulesModal" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Como jogar na Léxora Arena">
     <div class="modal-card rules-card">
       <div class="modal-header">
         <h2>📖 Como Jogar na LÉXORA ARENA</h2>
@@ -511,6 +576,6 @@
   </div>
 
   <!-- Scripts Modular ES6 -->
-  <script type="module" src="scripts/app.js?v=10"></script>
+  <script type="module" src="scripts/app.js?v=14"></script>
 </body>
 </html>

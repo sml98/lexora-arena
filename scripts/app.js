@@ -54,6 +54,8 @@ export class LexoraApp {
       currentTypingGuess: '',
       isSubmitting: false,
       tournamentsList: [],
+      pendingDepositTransactionId: null,
+      lastFocusedElement: null,
 
       // Timers
       blitzTimerId: null,
@@ -147,6 +149,8 @@ export class LexoraApp {
     const screenArena = document.getElementById('screenArena');
     if (screenLobby) screenLobby.style.display = 'none';
     if (screenArena) screenArena.style.display = 'flex';
+    const mobileNav = document.querySelector('.mobile-bottom-nav');
+    if (mobileNav) mobileNav.classList.add('arena-hidden');
 
     // HUD da Partida
     const titleElem = document.getElementById('hudGameTitle');
@@ -188,6 +192,8 @@ export class LexoraApp {
     const screenArena = document.getElementById('screenArena');
     if (screenLobby) screenLobby.style.display = 'flex';
     if (screenArena) screenArena.style.display = 'none';
+    const mobileNav = document.querySelector('.mobile-bottom-nav');
+    if (mobileNav) mobileNav.classList.remove('arena-hidden');
 
     this.updateUI();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -210,6 +216,17 @@ export class LexoraApp {
     const { ok, data } = await this.apiRequest('/api/tournaments/list');
     if (ok && data.tournaments) {
       this.state.tournamentsList = data.tournaments;
+      const dailyMajor = data.tournaments.find(t => t.is_daily_major);
+      if (dailyMajor) {
+        const registered = Math.min(dailyMajor.max_players, dailyMajor.registered_count || 0);
+        const remaining = Math.max(0, dailyMajor.max_players - registered);
+        const registeredEl = document.getElementById('dailyRegisteredCount');
+        const remainingEl = document.getElementById('dailyRemainingCount');
+        const capacityBar = document.getElementById('majorCapacityBar');
+        if (registeredEl) registeredEl.textContent = registered;
+        if (remainingEl) remainingEl.textContent = `${remaining} ${remaining === 1 ? 'vaga' : 'vagas'}`;
+        if (capacityBar) capacityBar.style.width = `${(registered / dailyMajor.max_players) * 100}%`;
+      }
       this.ui.renderRoomsLobby(data.tournaments, (id, fee, gameType, title) => {
         this.joinTournamentRoom(id, fee, gameType, title);
       });
@@ -217,6 +234,19 @@ export class LexoraApp {
   }
 
   async joinTournamentRoom(tournamentId, entryFee, gameType, title) {
+    // Para usuários autenticados, o SQLite é a fonte de verdade. Atualizar o
+    // saldo antes da validação evita bloquear uma inscrição por estado antigo
+    // mantido na aba do navegador.
+    if (this.state.token) {
+      const { ok, data } = await this.apiRequest('/api/auth/me');
+      if (!ok || !data.user) {
+        this.showToast(data.error || 'Não foi possível confirmar seu saldo. Tente novamente.', 'error');
+        return;
+      }
+      this.state.balance = data.user.balance;
+      this.updateUI();
+    }
+
     if (this.state.balance < entryFee) {
       this.showToast(`Saldo insuficiente. Taxa de entrada: R$ ${entryFee.toFixed(2)}`, 'error');
       this.openModal('depositModal');
@@ -230,6 +260,7 @@ export class LexoraApp {
         return;
       }
       this.state.balance = data.newBalance;
+      this.updateUI();
     } else {
       this.state.balance -= entryFee;
       this.saveState();
@@ -295,6 +326,12 @@ export class LexoraApp {
     const v = document.getElementById('hudStatVal');
     if (lbl) lbl.textContent = label;
     if (v) v.textContent = val;
+    const progress = document.getElementById('hudProgressBar');
+    if (progress) {
+      const match = String(val).match(/(\d+)\s*\/\s*(\d+)/);
+      const percent = match ? (Number(match[1]) / Number(match[2])) * 100 : 0;
+      progress.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    }
   }
 
   /* TERMO BLITZ (60s) */
@@ -306,6 +343,7 @@ export class LexoraApp {
     this.state.blitzTimerId = setInterval(() => {
       timeLeft--;
       if (timerElem) timerElem.textContent = `${timeLeft}s`;
+      document.documentElement.style.setProperty('--blitz-progress', `${(timeLeft / TERMO_ROUND_TIME_SECONDS) * 100}%`);
 
       if (timeLeft <= 0) {
         clearInterval(this.state.blitzTimerId);
@@ -338,6 +376,7 @@ export class LexoraApp {
     this.state.anagramaTimerId = setInterval(() => {
       timeLeft--;
       if (timerElem) timerElem.textContent = `${timeLeft}s`;
+      document.documentElement.style.setProperty('--anagrama-progress', `${(timeLeft / ANAGRAM_TIME_SECONDS) * 100}%`);
 
       if (timeLeft <= 0) {
         clearInterval(this.state.anagramaTimerId);
@@ -562,16 +601,55 @@ export class LexoraApp {
 
     window.addEventListener('resize', () => this.adjustResponsiveLayout());
     window.addEventListener('orientationchange', () => setTimeout(() => this.adjustResponsiveLayout(), 120));
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        const activeModal = document.querySelector('.modal-overlay.active');
+        if (activeModal) this.closeModal(activeModal.id);
+      }
+    });
 
     // Logo & Header
     const logo = document.getElementById('headerLogo');
-    if (logo) logo.addEventListener('click', () => this.leaveArena());
+    if (logo) {
+      logo.addEventListener('click', () => this.leaveArena());
+      logo.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          this.leaveArena();
+        }
+      });
+    }
 
     const leaveBtn = document.getElementById('leaveArenaBtn');
     if (leaveBtn) leaveBtn.addEventListener('click', () => this.leaveArena());
 
     const quickDep = document.getElementById('quickDepositBtn');
     if (quickDep) quickDep.addEventListener('click', () => this.openModal('depositModal'));
+
+    document.querySelectorAll('[data-scroll-target]').forEach(button => {
+      button.addEventListener('click', () => {
+        const target = document.getElementById(button.dataset.scrollTarget);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelectorAll('[data-scroll-target]').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll(`[data-scroll-target="${button.dataset.scrollTarget}"]`).forEach(item => item.classList.add('active'));
+      });
+    });
+
+    document.querySelectorAll('.room-filter').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.room-filter').forEach(item => item.classList.remove('active'));
+        button.classList.add('active');
+        const filter = button.dataset.roomFilter;
+        let visibleRooms = 0;
+        document.querySelectorAll('.room-card').forEach(card => {
+          const visible = filter === 'all' || card.dataset.game === filter;
+          card.hidden = !visible;
+          if (visible) visibleRooms += 1;
+        });
+        const emptyState = document.querySelector('.rooms-empty-state');
+        if (emptyState) emptyState.style.display = visibleRooms ? 'none' : 'block';
+      });
+    });
 
     // Cards de Jogos no Lobby
     document.querySelectorAll('.game-card, .game-play-btn').forEach(btn => {
@@ -757,31 +835,79 @@ export class LexoraApp {
 
     const genPix = document.getElementById('generatePixBtn');
     if (genPix) {
-      genPix.addEventListener('click', () => {
+      genPix.addEventListener('click', async () => {
         const val = parseFloat(document.getElementById('customDepositVal').value) || 20;
         if (val < 5) {
           this.showToast('O valor mínimo de depósito é R$ 5,00.', 'error');
           return;
         }
-        const pixInput = document.getElementById('pixCodeInput');
-        if (pixInput) {
-          pixInput.value = `00020126580014br.gov.bcb.pix0136lexora-pix-${Date.now()}520400005303986540${val.toFixed(2)}5802BR5916LEXORA ARENA LTDA6009SAO PAULO62070503***6304`;
+
+        genPix.disabled = true;
+        genPix.textContent = 'Gerando cobrança...';
+
+        let pixCode = `00020126580014br.gov.bcb.pix0136lexora-pix-${Date.now()}520400005303986540${val.toFixed(2)}5802BR5916LEXORA ARENA LTDA6009SAO PAULO62070503***6304`;
+
+        if (this.state.token) {
+          const { ok, data } = await this.apiRequest('/api/wallet/deposit/create', 'POST', { amount: val });
+          if (!ok) {
+            this.showToast(data.error || 'Não foi possível gerar a cobrança PIX.', 'error');
+            genPix.disabled = false;
+            genPix.textContent = 'Gerar Cobrança PIX';
+            return;
+          }
+          this.state.pendingDepositTransactionId = data.transactionId;
+          pixCode = data.pixCode;
+        } else {
+          this.state.pendingDepositTransactionId = null;
         }
+
+        const pixInput = document.getElementById('pixCodeInput');
+        if (pixInput) pixInput.value = pixCode;
         document.getElementById('depositStep1').style.display = 'none';
         document.getElementById('depositStep2').style.display = 'block';
+        genPix.disabled = false;
+        genPix.textContent = 'Gerar Cobrança PIX';
       });
     }
 
     const simPix = document.getElementById('simulatePixPaymentBtn');
     if (simPix) {
-      simPix.addEventListener('click', () => {
+      simPix.addEventListener('click', async () => {
         const val = parseFloat(document.getElementById('customDepositVal').value) || 20;
-        this.state.balance += val;
-        this.saveState();
+
+        simPix.disabled = true;
+        simPix.textContent = 'Confirmando pagamento...';
+
+        if (this.state.token) {
+          if (!this.state.pendingDepositTransactionId) {
+            this.showToast('Gere uma nova cobrança PIX antes de confirmar.', 'error');
+            simPix.disabled = false;
+            simPix.textContent = '⚡ Simular Pagamento Concluído (Aprovar)';
+            return;
+          }
+
+          const { ok, data } = await this.apiRequest('/api/wallet/deposit/simulate-pay', 'POST', {
+            transactionId: this.state.pendingDepositTransactionId
+          });
+          if (!ok) {
+            this.showToast(data.error || 'Não foi possível confirmar o depósito.', 'error');
+            simPix.disabled = false;
+            simPix.textContent = '⚡ Simular Pagamento Concluído (Aprovar)';
+            return;
+          }
+          this.state.balance = data.newBalance;
+          this.state.pendingDepositTransactionId = null;
+        } else {
+          this.state.balance += val;
+          this.saveState();
+        }
+
         this.showToast(`⚡ Depósito PIX de R$ ${val.toFixed(2)} aprovado instantaneamente!`, 'success');
         this.closeModal('depositModal');
         document.getElementById('depositStep1').style.display = 'block';
         document.getElementById('depositStep2').style.display = 'none';
+        simPix.disabled = false;
+        simPix.textContent = '⚡ Simular Pagamento Concluído (Aprovar)';
         this.updateUI();
       });
     }
@@ -907,7 +1033,9 @@ export class LexoraApp {
 
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `<span>${type === 'error' ? '⚠️' : '⚡'}</span> ${msg}`;
+    const icon = document.createElement('span');
+    icon.textContent = type === 'error' ? '⚠️' : '⚡';
+    toast.append(icon, document.createTextNode(` ${msg}`));
     container.appendChild(toast);
 
     setTimeout(() => {
@@ -918,12 +1046,23 @@ export class LexoraApp {
 
   openModal(id) {
     const m = document.getElementById(id);
-    if (m) m.classList.add('active');
+    if (m) {
+      this.state.lastFocusedElement = document.activeElement;
+      m.classList.add('active');
+      document.body.classList.add('modal-open');
+      requestAnimationFrame(() => {
+        m.querySelector('input:not([type="hidden"]), button, select')?.focus();
+      });
+    }
   }
 
   closeModal(id) {
     const m = document.getElementById(id);
-    if (m) m.classList.remove('active');
+    if (m) {
+      m.classList.remove('active');
+      if (!document.querySelector('.modal-overlay.active')) document.body.classList.remove('modal-open');
+      this.state.lastFocusedElement?.focus?.();
+    }
   }
 }
 
@@ -944,4 +1083,3 @@ if (document.readyState === 'loading') {
 } else {
   bootLexoraApp();
 }
-
