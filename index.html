@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#09070f">
+  <meta name="description" content="Léxora — arena brasileira de jogos de palavras.">
+  <title>Léxora — Arena de palavras</title>
+  <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <header class="topbar">
+    <button class="brand" id="homeBtn" aria-label="Voltar ao lobby"><span class="brandmark">L</span><span>LÉX<span>ORA</span></span></button>
+    <nav class="nav-actions" aria-label="Conta">
+      <button class="icon-btn" id="soundBtn" aria-label="Alternar sons">♪</button>
+      <div class="balance"><small>SEU SALDO</small><strong id="balanceText">R$ 100,00</strong></div>
+      <button class="primary small" id="depositBtn">+ Depositar</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="lobby" class="screen active">
+      <div class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow"><i></i> EVENTO DIÁRIO • 21:00</span>
+          <h1>Uma palavra pode<br><em>mudar o jogo.</em></h1>
+          <p>Desafie sua mente, dispute torneios ao vivo e conquiste seu lugar no topo da arena.</p>
+          <div class="hero-actions">
+            <button class="primary" data-join="grand">Entrar no Grand Major <span>→</span></button>
+            <span class="entry">Entrada <b>R$ 20</b></span>
+          </div>
+        </div>
+        <div class="event-panel">
+          <span>COMEÇA EM</span><strong id="countdown">00:00:00</strong>
+          <div class="prize"><small>PRÊMIO TOTAL</small><b>R$ 1.000</b></div>
+          <div class="event-meta"><span>👥 38/50</span><span>🏆 Top 5 premiado</span></div>
+        </div>
+      </div>
+
+      <section class="games-section">
+        <div class="section-heading"><div><span class="eyebrow">ESCOLHA SEU DESAFIO</span><h2>Arenas abertas agora</h2></div><p>Partidas rápidas. Habilidade real.</p></div>
+        <div class="game-grid">
+          <article class="game-card violet"><span class="game-icon">◆</span><span class="live">AO VIVO</span><h3>Quarteto Masters</h3><p>Descubra quatro palavras com lógica e estratégia.</p><div class="card-bottom"><b>R$ 5</b><button data-game="quarteto">Jogar →</button></div></article>
+          <article class="game-card cyan"><span class="game-icon">◎</span><span class="live">AO VIVO</span><h3>Contexto</h3><p>Aproxime-se da palavra secreta por significado.</p><div class="card-bottom"><b>R$ 3</b><button data-game="contexto">Jogar →</button></div></article>
+          <article class="game-card amber"><span class="game-icon">⚡</span><span class="live">RÁPIDO</span><h3>Termo Blitz</h3><p>Acerte a palavra de cinco letras em seis tentativas.</p><div class="card-bottom"><b>R$ 4</b><button data-game="termo">Jogar →</button></div></article>
+          <article class="game-card green"><span class="game-icon">A</span><span class="live">90 SEG</span><h3>Anagrama Rush</h3><p>Forme o máximo de palavras antes do tempo acabar.</p><div class="card-bottom"><b>R$ 2</b><button data-game="anagrama">Jogar →</button></div></article>
+        </div>
+      </section>
+      <section class="trust"><div><b>4</b><span>modos de jogo</span></div><div><b>24h</b><span>arenas abertas</span></div><div><b>20%</b><span>rake transparente</span></div><div><b>100%</b><span>habilidade</span></div></section>
+    </section>
+
+    <section id="arena" class="screen arena-screen" aria-live="polite">
+      <button class="back" id="backBtn">← Voltar ao lobby</button>
+      <div class="arena-shell">
+        <header class="arena-head"><div><span class="eyebrow" id="arenaTag">ARENA</span><h2 id="arenaTitle">Quarteto Masters</h2></div><div class="score"><small id="scoreLabel">TENTATIVAS</small><strong id="scoreValue">0 / 6</strong></div></header>
+        <div id="gameSurface" class="game-surface"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="close" id="closeModal" aria-label="Fechar">×</button><span class="modal-icon" id="modalIcon">✦</span><h2 id="modalTitle">Tudo certo!</h2><p id="modalText"></p><button class="primary full" id="modalAction">Continuar</button></div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="scripts/app.js"></script>
+</body>
+</html>
