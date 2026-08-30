@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#09070f">
-  <meta name="description" content="Léxora — arena brasileira de jogos de palavras.">
+  <meta name="description" content="Léxora Duelo — arena PVP de jogos de palavras em tempo real.">
   <title>Léxora — Arena de palavras</title>
-  <link rel="stylesheet" href="styles/main.css?v=5">
+  <link rel="stylesheet" href="styles/main.css?v=6">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -14,8 +14,8 @@
     <button class="brand" id="homeBtn" aria-label="Voltar ao lobby"><span class="brandmark">L</span><span>LÉX<span>ORA</span></span></button>
     <nav class="nav-actions" aria-label="Conta">
       <button class="icon-btn" id="soundBtn" aria-label="Alternar sons">♪</button>
-      <div class="balance"><small>SEU SALDO</small><strong id="balanceText">R$ 100,00</strong></div>
-      <button class="primary small" id="depositBtn">+ Depositar</button>
+      <div class="balance"><small>CRÉDITOS DEMO</small><strong id="balanceText">—</strong></div>
+      <button class="primary small" id="profileBtn">Meu perfil</button>
     </nav>
   </header>
 
@@ -23,18 +23,19 @@
     <section id="lobby" class="screen active">
       <div class="hero">
         <div class="hero-copy">
-          <span class="eyebrow"><i></i> EVENTO DIÁRIO • 21:00</span>
-          <h1>Uma palavra pode<br><em>mudar o jogo.</em></h1>
-          <p>Desafie sua mente, dispute torneios ao vivo e conquiste seu lugar no topo da arena.</p>
+          <span class="eyebrow"><i></i> LEXORA DUELO • PVP AO VIVO</span>
+          <h1>1 minuto. 1 adversário.<br><em>1 vencedor.</em></h1>
+          <p>Entre na fila, receba o mesmo desafio do seu rival e vença por habilidade — sem bots e sem resultados manipulados.</p>
           <div class="hero-actions">
-            <button class="primary" data-join="grand">Entrar no Grand Major <span>→</span></button>
-            <span class="entry">Entrada <b>R$ 20</b></span>
+            <button class="primary" data-pvp="termo">Encontrar adversário <span>→</span></button>
+            <span class="entry">Entrada virtual <b>2 créditos demo</b></span>
           </div>
         </div>
         <div class="event-panel">
-          <span>COMEÇA EM</span><strong id="countdown">00:00:00</strong>
-          <div class="prize"><small>PRÊMIO TOTAL</small><b>R$ 1.000</b></div>
-          <div class="event-meta"><span>👥 38/50</span><span>🏆 Top 5 premiado</span></div>
+          <span>PRÓXIMO TORNEIO DEMO EM</span><strong id="countdown">00:00:00</strong>
+          <div class="prize"><small>JOGADORES CONECTADOS</small><b id="onlinePlayers">0 online</b></div>
+          <div class="event-meta"><span>◎ Mesmo desafio</span><span>⚖ Resultado real</span></div>
+          <p class="demo-notice">Créditos virtuais • dinheiro real desativado</p>
         </div>
       </div>
 
@@ -48,13 +49,37 @@
         </div>
         <p class="language-stock" id="languageStock">Carregando o estoque linguístico…</p>
         <div class="game-grid">
-          <article class="game-card violet"><span class="game-icon">◆</span><span class="live">AO VIVO</span><h3>Quarteto Masters</h3><p>Descubra quatro palavras com lógica e estratégia.</p><div class="card-bottom"><b>R$ 5</b><button data-game="quarteto">Jogar →</button></div></article>
-          <article class="game-card cyan"><span class="game-icon">◎</span><span class="live">AO VIVO</span><h3>Contexto</h3><p>Aproxime-se da palavra secreta por significado.</p><div class="card-bottom"><b>R$ 3</b><button data-game="contexto">Jogar →</button></div></article>
-          <article class="game-card amber"><span class="game-icon">⚡</span><span class="live">RÁPIDO</span><h3>Termo Blitz</h3><p>Acerte a palavra de cinco letras em seis tentativas.</p><div class="card-bottom"><b>R$ 4</b><button data-game="termo">Jogar →</button></div></article>
-          <article class="game-card green"><span class="game-icon">A</span><span class="live">90 SEG</span><h3>Anagrama Rush</h3><p>Forme o máximo de palavras antes do tempo acabar.</p><div class="card-bottom"><b>R$ 2</b><button data-game="anagrama">Jogar →</button></div></article>
+          <article class="game-card violet"><span class="game-icon">◆</span><span class="live">PVP</span><h3>Quarteto Masters</h3><p>Os dois rivais recebem as mesmas quatro palavras.</p><div class="card-bottom"><b>2 CR demo</b><button data-pvp="quarteto">Duelo →</button></div></article>
+          <article class="game-card cyan"><span class="game-icon">◎</span><span class="live">TREINO</span><h3>Contexto</h3><p>Desafio semântico diário, gratuito e determinístico.</p><div class="card-bottom"><b>Grátis</b><button data-game="contexto">Treinar →</button></div></article>
+          <article class="game-card amber"><span class="game-icon">⚡</span><span class="live">PVP • 60 SEG</span><h3>Termo Blitz</h3><p>A mesma palavra, seis tentativas e desempate por tempo.</p><div class="card-bottom"><b>2 CR demo</b><button data-pvp="termo">Duelo →</button></div></article>
+          <article class="game-card green"><span class="game-icon">A</span><span class="live">PVP • 60 SEG</span><h3>Anagrama Rush</h3><p>As mesmas letras, palavras validadas pelo servidor.</p><div class="card-bottom"><b>2 CR demo</b><button data-pvp="anagrama">Duelo →</button></div></article>
         </div>
       </section>
-      <section class="trust"><div><b>4</b><span>modos de jogo</span></div><div><b>24h</b><span>arenas abertas</span></div><div><b>20%</b><span>rake transparente</span></div><div><b>100%</b><span>habilidade</span></div></section>
+      <section class="lobby-data-grid">
+        <article class="data-panel"><header><div><span class="eyebrow">SUA PROGRESSÃO</span><h3 id="profileName">Criando sessão…</h3></div><button id="friendBtn">Desafiar amigo</button></header><div class="profile-metrics" id="profileMetrics"></div><div class="recent-list" id="recentMatches"><p>Nenhuma partida disputada.</p></div></article>
+        <article class="data-panel"><header><div><span class="eyebrow">RANKING GERAL</span><h3>Melhores da arena</h3></div><button id="shareLatestBtn" disabled>Compartilhar resultado</button></header><ol class="ranking-list" id="rankingList"><li>Aguardando jogadores…</li></ol></article>
+      </section>
+      <section class="tournaments-section"><div class="section-heading"><div><span class="eyebrow">TORNEIOS VIRTUAIS</span><h2>Próximas chaves</h2></div><p>8, 16 e 32 jogadores • sem dinheiro real</p></div><div class="tournament-grid" id="tournamentGrid"></div></section>
+      <section class="trust"><div><b>PVP</b><span>servidor autoritativo</span></div><div><b>0</b><span>bots na fila</span></div><div><b>Elo</b><span>ranking por habilidade</span></div><div><b>100%</b><span>créditos virtuais</span></div></section>
+    </section>
+
+    <section id="pvpArena" class="screen arena-screen" aria-live="polite">
+      <button class="back" id="pvpBackBtn">← Voltar ao lobby</button>
+      <div class="pvp-shell">
+        <div class="connection-state" id="connectionState" data-state="connecting"><i></i><span>Conectando à arena…</span></div>
+        <header class="pvp-scoreboard">
+          <div><small>VOCÊ</small><strong id="pvpYouName">Jogador</strong><b id="pvpYouScore">0</b></div>
+          <span class="versus">VS</span>
+          <div><small>ADVERSÁRIO</small><strong id="pvpOpponentName">Procurando…</strong><b id="pvpOpponentScore">0</b></div>
+        </header>
+        <div class="pvp-status"><span id="pvpMode">LEXORA DUELO</span><strong id="pvpTimer">—</strong></div>
+        <div id="pvpSurface" class="game-surface pvp-surface"></div>
+        <div class="pvp-result" id="pvpResult" hidden>
+          <span class="modal-icon" id="pvpResultIcon">◇</span><h2 id="pvpResultTitle">Resultado</h2><p class="result-phrase" id="pvpResultPhrase"></p>
+          <div class="result-comparison" id="pvpComparison"></div><p class="result-answer" id="pvpAnswers"></p>
+          <div class="result-actions"><button class="primary" id="rematchBtn">Jogar revanche</button><button id="copyResultBtn">Copiar resultado</button><button id="resultLobbyBtn">Voltar ao lobby</button></div>
+        </div>
+      </div>
     </section>
 
     <section id="arena" class="screen arena-screen" aria-live="polite">
@@ -68,6 +93,7 @@
 
   <div class="modal" id="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="close" id="closeModal" aria-label="Fechar">×</button><span class="modal-icon" id="modalIcon">✦</span><h2 id="modalTitle">Tudo certo!</h2><p id="modalText"></p><button class="primary full" id="modalAction">Continuar</button></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="scripts/app.js?v=5"></script>
+  <script type="module" src="scripts/app.js?v=6"></script>
+  <script type="module" src="scripts/pvp.js?v=1"></script>
 </body>
 </html>

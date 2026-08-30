@@ -112,6 +112,28 @@ function allocate(kind,candidates,count,getId=value=>value){
 }
 function canSpell(word,letters){const stock=countLetters(letters),need=countLetters(word);return Object.entries(need).every(([letter,total])=>(stock[letter]||0)>=total);}
 
+function createAnagramChallenge(pools){
+  const poolSet=new Set(pools.words);
+  const selected=allocate('anagrams',ANAGRAMAS.filter(item=>poolSet.has(item.base)),1,item=>item.key)[0];
+  return {letters:selected.letters,words:pools.anagramWords.filter(word=>canSpell(word,selected.letters)).slice(0,120)};
+}
+
+export function createSharedChallenge(mode,language='mixed'){
+  if(!['quarteto','termo','anagrama'].includes(mode))throw new Error('Este modo não está disponível para duelos.');
+  const safeLanguage=['pt','en','mixed'].includes(language)?language:'mixed';
+  const pools=languagePools(safeLanguage);
+  if(mode==='quarteto'){
+    const secrets=allocate('words',pools.words,4);
+    return {mode,language:safeLanguage,sessionOptions:{secrets},public:{boards:4,maxAttempts:9}};
+  }
+  if(mode==='termo'){
+    const secret=allocate('words',pools.words,1)[0];
+    return {mode,language:safeLanguage,sessionOptions:{secret},public:{wordLength:5,maxAttempts:6}};
+  }
+  const challenge=createAnagramChallenge(pools);
+  return {mode,language:safeLanguage,sessionOptions:{challenge,duration:60},public:{letters:[...challenge.letters],duration:60}};
+}
+
 export function createGameSession(mode, options={}) {
   if (!['quarteto','contexto','termo','anagrama'].includes(mode)) throw new Error('Modo de jogo inválido.');
   const id=randomUUID();
@@ -123,7 +145,7 @@ export function createGameSession(mode, options={}) {
   if(mode==='quarteto') Object.assign(session,{ secrets:options.secrets || allocate('words',pools.words,4), solved:[false,false,false,false], maxAttempts:9 });
   if(mode==='termo') Object.assign(session,{ secret:options.secret || allocate('words',pools.words,1)[0], maxAttempts:6 });
   if(mode==='contexto') Object.assign(session,{ challenge:options.challenge || allocate('contexts',pools.contexts,1,item=>item.secret)[0], maxAttempts:30, bestRank:9999 });
-  if(mode==='anagrama') { const duration=options.duration??90;const poolSet=new Set(pools.words),candidates=ANAGRAMAS.filter(item=>poolSet.has(item.base));const selected=options.challenge||allocate('anagrams',candidates,1,item=>item.key)[0];const challenge=options.challenge||{letters:selected.letters,words:pools.anagramWords.filter(word=>canSpell(word,selected.letters)).slice(0,120)};Object.assign(session,{ challenge, duration, deadline:Date.now()+duration*1000 }); }
+  if(mode==='anagrama') { const duration=options.duration??90;const challenge=options.challenge||createAnagramChallenge(pools);Object.assign(session,{ challenge, duration, deadline:Date.now()+duration*1000 }); }
   sessions.set(id,session);
   return publicStart(session);
 }

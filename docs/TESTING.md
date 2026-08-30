@@ -1,5 +1,7 @@
 # Testes no computador e no celular
 
+> O MVP usa apenas créditos virtuais. Confirme em `/api/config` que `realMoneyEnabled` é `false`.
+
 ## 1. Teste automatizado
 
 Na pasta do projeto, execute:
@@ -21,7 +23,30 @@ Os testes verificam, entre outros pontos:
 - não repetição diária entre partidas;
 - estrutura e IDs da interface.
 
-## 2. Teste no computador
+## 2. Teste PVP em duas abas
+
+1. Execute `npm start`.
+2. Abra o endereço informado em duas abas.
+3. Confirme dois nomes anônimos diferentes e `2 online`.
+4. Selecione o mesmo idioma e Termo Blitz nas duas abas.
+5. Clique em **Duelo** nas duas.
+6. Confira adversários cruzados, mesmo modo e contagem regressiva sincronizada.
+7. Envie a mesma palavra nas duas abas e compare as cores.
+8. Termine a partida ou abandone uma aba.
+9. Confira vitória/derrota, placares, tempo, frase real, créditos e Elo.
+10. Clique em revanche nas duas abas; uma nova sala deve ser criada.
+
+Repita com Anagrama e Quarteto. No Anagrama, as seis letras precisam aparecer iguais nas duas abas. No Quarteto, os quatro tabuleiros devem receber a mesma tentativa em ambas.
+
+### Reconexão
+
+Durante uma partida, recarregue uma aba em menos de dez segundos. A sessão deve voltar à mesma sala. Se permanecer desconectada por mais tempo, o rival vence por abandono.
+
+### Convite de amigo
+
+Clique em **Desafiar amigo**, copie o link e abra-o em outra aba ou aparelho. O convite expira em dez minutos e não pode ser aceito pela mesma sessão.
+
+## 3. Teste no computador
 
 Inicie o projeto:
 
@@ -56,7 +81,7 @@ No Chrome ou Edge:
 
 No Firefox, pressione `Ctrl+Shift+M` para abrir o modo de design responsivo.
 
-## 3. Teste em um celular real
+## 4. Teste em um celular real
 
 ### Preparação
 
@@ -94,7 +119,7 @@ Se o servidor escolher 8081, 8082 ou outra porta, use e libere essa mesma porta.
 7. Bloqueie e desbloqueie a tela durante o Anagrama para observar o cronômetro.
 8. Atualize a página e confirme que o saldo demonstrativo permanece.
 
-## 4. Testar uma porta específica
+## 5. Testar uma porta específica
 
 Somente no computador:
 
@@ -108,7 +133,7 @@ Na rede local:
 node server/server.js --host 0.0.0.0 --port 9000
 ```
 
-## 5. Solução de problemas
+## 6. Solução de problemas
 
 ### O celular não abre o endereço
 
@@ -133,6 +158,6 @@ O servidor tenta automaticamente as próximas nove portas. Use exatamente a URL 
 
 Volte ao terminal em que ele está rodando e pressione `Ctrl+C`.
 
-## 6. Segurança do teste local
+## 7. Segurança do teste local
 
 `npm run start:lan` expõe esta demonstração apenas à rede alcançável pelo computador. Use-o em uma rede privada confiável e encerre o servidor depois dos testes. Esse modo não transforma o projeto em uma implantação pública segura.

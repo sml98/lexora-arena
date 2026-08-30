@@ -1,5 +1,11 @@
 # Como jogar
 
+## Lexora Duelo
+
+Escolha Termo, Anagrama ou Quarteto e clique em **Duelo**. A fila só conecta jogadores reais que escolheram o mesmo modo e idioma. Os dois recebem o mesmo conteúdo e começam após a contagem regressiva do servidor.
+
+Cada duelo custa dois créditos virtuais. O vencedor recebe o pote de quatro créditos; em empate, cada entrada é devolvida. Esses créditos não possuem valor monetário.
+
 ## Escolha do idioma
 
 Antes de entrar em uma arena, selecione Português, English ou Misto. A escolha fica salva neste navegador. O contador abaixo dos botões mostra o tamanho real do estoque disponível para aquele idioma.
@@ -47,3 +53,9 @@ O catálogo do Contexto é semântico e separado do dicionário ortográfico usa
 Cada nova partida recebe uma sessão própria. As respostas não ficam no HTML nem são enviadas no início da rodada. Uma resposta sorteada é retirada do estoque global daquele dia, evitando que outro jogador ou uma nova tentativa receba o mesmo conteúdo.
 
 O dia de alocação segue UTC. Se o estoque de um modo acabar, o servidor informa o esgotamento e não recicla respostas.
+
+## Resultado e revanche
+
+A tela final mostra os dois placares, ações, tempo, sequência e o motivo real da diferença. A revanche só acontece quando os dois jogadores aceitam e mantém a entrada de dois créditos demo.
+
+O botão de compartilhamento copia apenas o resultado e nunca revela a resposta antes de a sala terminar.
