@@ -1,3 +1,9 @@
 data/daily-allocations.json
 data/daily-allocations.json.tmp
 node_modules/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.DS_Store

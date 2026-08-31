@@ -1,131 +1,133 @@
 const $=(selector,root=document)=>root.querySelector(selector);
+const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
 const create=(tag,className='',text='')=>{const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node;};
-const formatNumber=value=>new Intl.NumberFormat('pt-BR').format(value||0);
-const modeNames={termo:'Termo Blitz',anagrama:'Anagrama Rush',quarteto:'Quarteto Masters'};
 const ui=()=>window.LexoraUI;
+const modeNames={quarteto:'QUARTETO',contexto:'CONTEXTO'};
+let session=null,socket=null,reconnectAttempt=0,currentMatch=null,currentOpponent=null,currentResult=null,clockTimer=null,queued=false,latestShare='';
+const tabId=crypto.randomUUID(),tabChannel='BroadcastChannel'in window?new BroadcastChannel('lexora-player-tabs'):null;
 
-let session=null,socket=null,reconnectAttempt=0,currentMatch=null,currentOpponent=null,currentResult=null,countdownTimer=null,pendingInvite=null,queued=false;
-const tabId=crypto.randomUUID();
-const tabChannel='BroadcastChannel' in window?new BroadcastChannel('lexora-player-tabs'):null;
-
-async function post(path,data){const response=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Falha de comunicação.');return payload;}
+async function post(path,data){const response=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)}),payload=await response.json();if(!response.ok)throw new Error(payload.error||'Falha de comunicação.');return payload;}
 
 async function resolveStoredSession(){
-  const playerId=sessionStorage.getItem('lexora_player_id'),token=sessionStorage.getItem('lexora_player_token');
-  if(!playerId||!token)return null;
-  let collision=false;
-  if(tabChannel){
-    const listener=event=>{if(event.data?.type==='collision'&&event.data.target===tabId)collision=true;};tabChannel.addEventListener('message',listener);tabChannel.postMessage({type:'claim',playerId,tabId});await new Promise(resolve=>setTimeout(resolve,100));tabChannel.removeEventListener('message',listener);
-  }
-  if(collision)return null;
-  try{return await post('/api/pvp/session',{playerId,token});}catch{return null;}
+  const playerId=sessionStorage.getItem('lexora_player_id'),token=sessionStorage.getItem('lexora_player_token');if(!playerId||!token)return null;let collision=false;
+  if(tabChannel){const listener=event=>{if(event.data?.type==='collision'&&event.data.target===tabId)collision=true;};tabChannel.addEventListener('message',listener);tabChannel.postMessage({type:'claim',playerId,tabId});await new Promise(resolve=>setTimeout(resolve,90));tabChannel.removeEventListener('message',listener);}
+  if(collision)return null;try{return await post('/api/pvp/session',{playerId,token});}catch{return null;}
 }
-
 if(tabChannel)tabChannel.addEventListener('message',event=>{if(event.data?.type==='claim'&&session?.player?.id===event.data.playerId&&event.data.tabId!==tabId)tabChannel.postMessage({type:'collision',target:event.data.tabId});});
 
 async function initialize(){
-  session=await resolveStoredSession()||await post('/api/pvp/session',{});
-  sessionStorage.setItem('lexora_player_id',session.player.id);sessionStorage.setItem('lexora_player_token',session.token);
-  renderProfile(session.player);connect();loadLobbyData();
-  const invite=new URLSearchParams(location.search).get('challenge');if(invite)pendingInvite=invite.toUpperCase();
+  try{session=await resolveStoredSession()||await post('/api/pvp/session',{});sessionStorage.setItem('lexora_player_id',session.player.id);sessionStorage.setItem('lexora_player_token',session.token);ui()?.renderProfile(session.player);connect();const challenge=new URLSearchParams(location.search).get('challenge');if(challenge)session.pendingChallenge=challenge.toUpperCase();}
+  catch(error){ui()?.modal('Servidor indisponível',error.message,'!');}
 }
 
 function connect(){
-  setConnection('connecting','Conectando à arena…');
-  const protocol=location.protocol==='https:'?'wss:':'ws:';
+  setConnection('connecting','Conectando à arena…');const protocol=location.protocol==='https:'?'wss:':'ws:';
   socket=new WebSocket(`${protocol}//${location.host}/ws?playerId=${encodeURIComponent(session.player.id)}&token=${encodeURIComponent(session.token)}`);
-  socket.addEventListener('open',()=>{reconnectAttempt=0;setConnection('online','Conectado ao servidor');if(pendingInvite){send('friend:join',{code:pendingInvite});pendingInvite=null;}});
-  socket.addEventListener('message',event=>{try{handleMessage(JSON.parse(event.data));}catch{ui()?.toast('Mensagem inválida recebida do servidor.','error');}});
-  socket.addEventListener('close',()=>{setConnection('offline','Reconectando…');const delay=Math.min(8000,500*2**reconnectAttempt++);setTimeout(connect,delay);});
-  socket.addEventListener('error',()=>{});
+  socket.addEventListener('open',()=>{reconnectAttempt=0;setConnection('online','Conectado ao servidor');if(session.pendingChallenge){send('friend:join',{code:session.pendingChallenge});session.pendingChallenge=null;}});
+  socket.addEventListener('message',event=>{try{handleMessage(JSON.parse(event.data));}catch(error){console.error('pvp_message_error',error);ui()?.toast('Não foi possível atualizar a arena.','error');}});
+  socket.addEventListener('close',()=>{setConnection('offline','Reconectando…');setTimeout(connect,Math.min(8_000,500*2**reconnectAttempt++));});socket.addEventListener('error',()=>{});
 }
 
 function send(type,payload={}){if(socket?.readyState!==WebSocket.OPEN){ui()?.toast('A conexão ainda não está pronta.','error');return false;}socket.send(JSON.stringify({type,...payload}));return true;}
-
 function handleMessage(message){
-  if(message.type==='session:ready'){session.player=message.player;renderProfile(message.player);$('#onlinePlayers').textContent=`${message.online} online`;return;}
-  if(message.type==='presence'){const count=message.online||0;$('#onlinePlayers').textContent=`${count} ${count===1?'online':'online'}`;return;}
+  if(message.type==='session:ready'){session.player=message.player;ui()?.renderProfile(message.player);$('#onlinePlayers').textContent=`${message.online||0} online`;return;}
+  if(message.type==='presence'){$('#onlinePlayers').textContent=`${message.online||0} online`;return;}
   if(message.type==='queue:joined'||message.type==='queue:update'){queued=true;renderQueue(message.position||1);return;}
   if(message.type==='queue:left'){queued=false;showLobby();return;}
   if(message.type==='match:found'||message.type==='match:reconnected'){queued=false;beginMatch(message);return;}
-  if(message.type==='match:started'){currentMatch=message.match;setInputsEnabled(true);startClock();setConnection('online','Partida em andamento');return;}
-  if(message.type==='match:update'){currentMatch=message.match;updateScores();return;}
-  if(message.type==='action:accepted'){currentMatch=message.match;applyActionResult(message.result);updateScores();return;}
+  if(message.type==='match:started'){currentMatch=message.match;renderActiveGame();startClock();setConnection('online','Partida em andamento');return;}
+  if(message.type==='match:update'){currentMatch=message.match;updateProgress();return;}
+  if(message.type==='action:accepted'){currentMatch=message.match;applyActionResult(message.result);updateProgress();return;}
   if(message.type==='match:ended'){showResult(message);return;}
   if(message.type==='rematch:waiting'){setConnection('waiting','Aguardando o rival aceitar a revanche…');return;}
   if(message.type==='opponent:disconnected'){setConnection('waiting',`Rival desconectado — aguardando ${Math.round(message.graceMs/1000)}s`);return;}
   if(message.type==='friend:created'){shareInvite(message.code);return;}
+  if(message.type==='player:blocked'){ui()?.toast('Jogador bloqueado.');return;}
+  if(message.type==='player:reported'){ui()?.toast('Denúncia registrada para revisão.');return;}
   if(message.type==='session:replaced'){ui()?.toast('Esta sessão foi aberta em outra aba.','error');return;}
   if(message.type==='error'){ui()?.toast(message.message,'error');setConnection('error',message.message);return;}
 }
 
-function setConnection(state,text){const node=$('#connectionState');node.dataset.state=state;$('span',node).textContent=text;}
-function showPvp(){document.querySelectorAll('.screen').forEach(screen=>screen.classList.remove('active'));$('#pvpArena').classList.add('active');window.scrollTo(0,0);}
-function showLobby(){clearInterval(countdownTimer);currentMatch=null;queued=false;document.querySelectorAll('.screen').forEach(screen=>screen.classList.remove('active'));$('#lobby').classList.add('active');loadLobbyData();window.scrollTo({top:0,behavior:'smooth'});}
+function setConnection(state,text){const node=$('#connectionState');if(!node)return;node.dataset.state=state;$('span',node).textContent=text;}
+function showArena(){document.querySelectorAll('.screen').forEach(screen=>screen.classList.remove('active'));$('#pvpArena').classList.add('active');window.scrollTo(0,0);}
+function showLobby(){clearInterval(clockTimer);currentMatch=null;queued=false;ui()?.showLobby();ui()?.reloadData();}
 
-function joinQueue(mode){
+function joinQueue(mode,override={}){
   if(!session||socket?.readyState!==WebSocket.OPEN)return ui()?.toast('Aguarde a conexão com a arena.','error');
-  showPvp();currentResult=null;$('#pvpResult').hidden=true;$('#pvpSurface').hidden=false;$('#pvpMode').textContent=modeNames[mode];$('#pvpOpponentName').textContent='Procurando…';$('#pvpTimer').textContent='FILA';renderQueue(1);send('queue:join',{mode,language:ui()?.getLanguage()||'mixed'});
+  const config={...ui()?.getPlayConfig(),...override};if(config.matchType==='rewarded')return ui()?.toast('Partidas premiadas estão bloqueadas neste ambiente.','error');
+  showArena();currentResult=null;$('#pvpResult').hidden=true;$('#pvpSurface').hidden=false;$('#pvpMode').textContent=modeNames[mode];$('#seriesState').textContent=config.bestOf===3?'MELHOR DE 3':config.matchType.toUpperCase();$('#pvpOpponentName').textContent='Procurando…';$('#pvpTimer').textContent='FILA';renderQueue(1);send('queue:join',{mode,...config});
 }
 
-function renderQueue(position){const surface=$('#pvpSurface');surface.replaceChildren();const loader=create('div','matchmaking-loader');loader.append(create('i'),create('h2','',position>1?`Posição ${position} na fila`:'Procurando adversário…'),create('p','','Estamos buscando outro jogador real com a mesma arena e idioma.'));const cancel=create('button','', 'Cancelar busca');cancel.addEventListener('click',()=>send('queue:leave'));loader.append(cancel);surface.append(loader);setConnection('waiting','Matchmaking em andamento');}
+async function joinFinancialQueue(mode,entryCents,financialToken){
+  const response=await fetch('/api/pvp/link-financial',{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${financialToken}`},body:JSON.stringify({playerId:session.player.id,playerToken:session.token})}),payload=await response.json();if(!response.ok)throw new Error(payload.error||'Não foi possível vincular a identidade.');
+  session.player=payload.player;showArena();$('#pvpResult').hidden=true;$('#pvpSurface').hidden=false;$('#pvpMode').textContent=modeNames[mode];renderQueue(1);send('queue:join',{mode,language:ui()?.getLanguage()||'pt',matchType:'rewarded',financial:true,entryCents,bestOf:1});
+}
+
+function renderQueue(position){
+  const root=$('#pvpSurface');root.replaceChildren();const loader=create('div','matchmaking-loader');const radar=create('div','radar');const title=create('h2','',position>1?`Posição ${position} na fila`:'Buscando rival compatível…');const copy=create('p','','A faixa começa em ±100 de rating e se expande com o tempo. Apenas jogadores reais entram nesta fila.');const cancel=create('button','glass-button','CANCELAR BUSCA');cancel.addEventListener('click',()=>send('queue:leave'));loader.append(radar,title,copy,cancel);root.append(loader);setConnection('waiting','Matchmaking em andamento');
+}
 
 function beginMatch(payload){
-  currentMatch=payload.match;currentOpponent=payload.opponent;showPvp();$('#pvpResult').hidden=true;$('#pvpSurface').hidden=false;$('#pvpYouName').textContent=payload.you?.name||session.player.name;$('#pvpOpponentName').textContent=currentOpponent?.name||'Rival';$('#pvpMode').textContent=`${modeNames[currentMatch.mode]} • ${String(currentMatch.language).toUpperCase()}`;renderChallenge(currentMatch);updateScores();setInputsEnabled(false);startClock();setConnection(currentMatch.status==='active'?'online':'waiting',currentMatch.status==='active'?'Partida em andamento':'Mesmo desafio confirmado • preparando duelo');
+  showArena();currentMatch=payload.match;currentOpponent=payload.opponent;session.player=payload.you;ui()?.renderProfile(payload.you);
+  $('#pvpYouName').textContent=payload.you.name;$('#pvpYouAvatar').textContent=payload.you.name.slice(0,1).toUpperCase();$('#pvpOpponentName').textContent=payload.opponent.name;$('#pvpRivalAvatar').textContent=payload.opponent.name.slice(0,1).toUpperCase();$('#pvpMode').textContent=modeNames[currentMatch.mode];
+  $('#seriesState').textContent=currentMatch.series?`JOGO ${currentMatch.series.gameNumber} • MELHOR DE ${currentMatch.series.bestOf}`:currentMatch.matchType.toUpperCase();
+  if(currentMatch.status==='active')renderActiveGame();else renderFound();startClock();
 }
 
-function startClock(){clearInterval(countdownTimer);const tick=()=>{if(!currentMatch)return;const now=Date.now();if(now<currentMatch.startAt){$('#pvpTimer').textContent=`Começa em ${Math.max(1,Math.ceil((currentMatch.startAt-now)/1000))}`;return;}const remaining=Math.max(0,Math.ceil((currentMatch.endAt-now)/1000));$('#pvpTimer').textContent=`${remaining}s`;if(remaining===0)clearInterval(countdownTimer);};tick();countdownTimer=setInterval(tick,200);}
-function setInputsEnabled(enabled){$('#pvpSurface').querySelectorAll('input,button').forEach(control=>{if(!control.dataset.always)control.disabled=!enabled;});}
+function renderFound(){const root=$('#pvpSurface');root.replaceChildren();const overlay=create('div','found-overlay');overlay.innerHTML='<small>ADVERSÁRIO ENCONTRADO</small><h2>MESMAS CONDIÇÕES. UM VENCEDOR.</h2><strong>3</strong>';root.append(overlay);let value=3;const timer=setInterval(()=>{value--;const node=$('strong',overlay);if(value>0){node.textContent=value;tone(330+value*120);}else{clearInterval(timer);node.textContent='JOGAR';}},900);}
 
-function renderChallenge(match){if(match.mode==='termo')renderTermo(match);if(match.mode==='anagrama')renderAnagrama(match);if(match.mode==='quarteto')renderQuarteto(match);}
-
-function addWordForm(surface,instruction){const p=create('p','mode-instruction',instruction),form=create('form','word-input'),input=create('input'),button=create('button','primary','Enviar');input.placeholder='Digite uma palavra';input.autocomplete='off';input.setAttribute('aria-label','Palavra');form.append(input,button);surface.append(p,form);form.addEventListener('submit',event=>{event.preventDefault();const guess=input.value.trim();if(!guess)return;if(send('match:action',{matchId:currentMatch.id,action:{guess}}))input.value='';});return input;}
-
-function renderTermo(match){const surface=$('#pvpSurface');surface.replaceChildren();const note=create('div','duel-equality','⚖ Vocês receberam exatamente a mesma palavra.');surface.append(note);const grid=create('div','termo-grid pvp-termo');for(let row=0;row<6;row++){const line=create('div');line.dataset.row=String(row);for(let col=0;col<5;col++)line.append(create('span'));grid.append(line);}surface.append(grid);const input=addWordForm(surface,'Acerte em até seis tentativas. Em empate de acertos, o menor tempo vence.');input.maxLength=5;}
-
-function renderAnagrama(match){const surface=$('#pvpSurface');surface.replaceChildren(create('div','duel-equality','⚖ Mesmas letras e o mesmo cronômetro para os dois jogadores.'));const current=create('div','anagrama-current','Monte uma palavra'),letters=create('div','letters anagrama-letters');let word='';for(const letter of match.challenge.letters){const button=create('button','letter',letter);button.addEventListener('click',()=>{if(button.disabled)return;word+=letter;button.disabled=true;current.textContent=word;});letters.append(button);}const actions=create('div','anagrama-actions'),clear=create('button','','Limpar'),submit=create('button','primary','Validar palavra'),list=create('div','guess-list');clear.addEventListener('click',()=>{word='';current.textContent='Monte uma palavra';letters.querySelectorAll('button').forEach(button=>button.disabled=false);});submit.addEventListener('click',()=>{if(word&&send('match:action',{matchId:currentMatch.id,action:{guess:word}}))clear.click();});actions.append(clear,submit);surface.append(current,letters,actions,list);}
-
-function renderQuarteto(match){const surface=$('#pvpSurface');surface.replaceChildren(create('div','duel-equality','⚖ Quatro palavras idênticas para os dois jogadores.'));const stage=create('div','quarteto-stage pvp-quarteto');for(let board=0;board<4;board++){const card=create('section','quarteto-card');card.dataset.board=String(board);const header=create('header');header.append(create('span','',`PALAVRA ${board+1}`),create('b','','EM JOGO'));const grid=create('div','quarteto-grid');for(let row=0;row<9;row++){const line=create('div','quarteto-row');line.dataset.row=String(row);for(let col=0;col<5;col++)line.append(create('span','quarteto-tile'));grid.append(line);}card.append(header,grid);stage.append(card);}surface.append(stage);const input=addWordForm(surface,'Uma tentativa vale para os quatro tabuleiros. Erros consomem uma das nove rodadas.');input.maxLength=5;}
-
-function applyActionResult(result){
-  if(currentMatch.mode==='termo'){
-    const tiles=document.querySelectorAll(`#pvpSurface .termo-grid [data-row="${result.attempts-1}"] span`);tiles.forEach((tile,index)=>{tile.textContent=result.tiles[index].letter;tile.className=`${result.tiles[index].status} reveal`;});
-  }else if(currentMatch.mode==='quarteto'){
-    result.boards.forEach((board,index)=>{if(!board.tiles)return;const tiles=document.querySelectorAll(`#pvpSurface [data-board="${index}"] [data-row="${result.attempts-1}"] .quarteto-tile`);tiles.forEach((tile,tileIndex)=>{tile.textContent=board.tiles[tileIndex].letter;tile.className=`quarteto-tile ${board.tiles[tileIndex].status} reveal`;});if(board.solved){const card=$(`#pvpSurface [data-board="${index}"]`);card.classList.add('solved');$('header b',card).textContent='RESOLVIDA';}});
-  }else{
-    ui()?.prependGuess($('#pvpSurface .guess-list'),{word:result.guess,detail:`+${result.points} pts`,className:'pop'});
-  }
-  ui()?.toast(`Jogada validada • ${formatNumber(result.score)} pontos`);
+function renderActiveGame(){if(!currentMatch)return;arenaAbort.abort();arenaAbort=new AbortController();if(currentMatch.mode==='quarteto')renderQuarteto();else renderContexto();updateProgress();}
+function updateProgress(){
+  if(!currentMatch)return;const you=currentMatch.progress?.[session.player.id]||{},rival=currentMatch.progress?.[currentOpponent?.id]||{};
+  if(currentMatch.mode==='quarteto'){$('#pvpYouScore').textContent=`${you.solved||0}/4`;$('#pvpOpponentScore').textContent=`${rival.solved||0}/4`;$$('.progress-card.you i').forEach((node,index)=>node.classList.toggle('on',index<(you.solved||0)));$$('.progress-card.rival i').forEach((node,index)=>node.classList.toggle('on',index<(rival.solved||0)));}
+  else{$('#pvpYouScore').textContent=you.bestRank>=9999?'—':`#${you.bestRank}`;$('#pvpOpponentScore').textContent=rival.bestRank>=9999?'—':`#${rival.bestRank}`;const toProgress=rank=>rank>=9999?2:Math.max(3,100-Math.log10(Math.max(1,rank))*25),race=$('.race-track');race?.style.setProperty('--you',`${toProgress(you.bestRank)}%`);race?.style.setProperty('--rival',`${toProgress(rival.bestRank)}%`);}
 }
 
-function updateScores(){if(!currentMatch)return;const own=currentMatch.scores?.[session.player.id]?.score||0,otherId=currentMatch.playerIds?.find(id=>id!==session.player.id),other=currentMatch.scores?.[otherId]?.score||0;$('#pvpYouScore').textContent=formatNumber(own);$('#pvpOpponentScore').textContent=formatNumber(other);}
+function progressHeader(){return `<div class="duel-progress"><article class="progress-card you"><header><span>VOCÊ</span><b>PROGRESSO</b></header><div class="progress-track">${'<i></i>'.repeat(4)}</div></article><article class="progress-card rival"><header><span>RIVAL</span><b>PROGRESSO</b></header><div class="progress-track">${'<i></i>'.repeat(4)}</div></article></div>`;}
+
+function renderQuarteto(){
+  const root=$('#pvpSurface'),max=currentMatch.challenge.maxAttempts||9;let typing='',attempt=0,solved=[false,false,false,false],busy=false;
+  root.innerHTML=`${progressHeader()}<div class="quarteto-stage">${[0,1,2,3].map(board=>`<section class="quarteto-board" data-board="${board}"><header><span>PALAVRA ${board+1}</span><b>EM JOGO</b></header>${Array.from({length:max},(_,row)=>`<div class="quarteto-row" data-row="${row}">${'<span class="quarteto-tile"></span>'.repeat(5)}</div>`).join('')}</section>`).join('')}</div><p class="quarteto-message">Uma tentativa alimenta os quatro painéis. As letras do rival nunca são exibidas.</p><div class="quarteto-keyboard">${['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'].map(row=>`<div>${[...row].map(key=>`<button data-key="${key}">${key}</button>`).join('')}</div>`).join('')}<div><button class="wide" data-key="ENTER">ENTER</button><button class="wide" data-key="BACKSPACE">⌫ APAGAR</button></div></div>`;
+  const refresh=()=>{for(let board=0;board<4;board++){if(solved[board])continue;root.querySelectorAll(`[data-board="${board}"] [data-row="${attempt}"] .quarteto-tile`).forEach((tile,index)=>{tile.textContent=typing[index]||'';tile.classList.toggle('typing',Boolean(typing[index]));});}};
+  const submit=()=>{if(busy)return;busy=true;if(!send('match:action',{matchId:currentMatch.id,action:{guess:typing}}))busy=false;setTimeout(()=>busy=false,350);};
+  const keyInput=raw=>{const key=String(raw).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace('Ç','C');if(key==='ENTER')submit();else if(key==='BACKSPACE'){typing=typing.slice(0,-1);refresh();}else if(/^[A-Z]$/.test(key)&&typing.length<5){typing+=key;refresh();tone(180);}};
+  root.querySelector('.quarteto-keyboard').addEventListener('click',event=>{const key=event.target.closest('[data-key]')?.dataset.key;if(key)keyInput(key);});
+  const keydown=event=>{if($('#pvpArena').classList.contains('active'))keyInput(event.key);};document.addEventListener('keydown',keydown,{signal:arenaAbort.signal});
+  root._apply=result=>{result.boards.forEach((board,index)=>{if(!board.tiles)return;root.querySelectorAll(`[data-board="${index}"] [data-row="${attempt}"] .quarteto-tile`).forEach((tile,tileIndex)=>{tile.textContent=board.tiles[tileIndex].letter;tile.className=`quarteto-tile ${board.tiles[tileIndex].status}`;});if(board.solved){const section=root.querySelector(`[data-board="${index}"]`);section.classList.add('solved');$('header b',section).textContent='RESOLVIDA';}});solved=result.solved;attempt=result.attempts;typing='';$('.quarteto-message',root).textContent=`${solved.filter(Boolean).length}/4 resolvidas • ${attempt}/${max} tentativas`;tone(solved.some(Boolean)?520:240);refresh();};
+  refresh();
+}
+
+let arenaAbort=new AbortController();
+function renderContexto(){
+  const root=$('#pvpSurface');
+  root.innerHTML=`<div class="semantic-race"><div class="runner you">VOCÊ <b>—</b></div><div class="race-track"><i class="race-marker you"></i><i class="race-marker rival"></i></div><div class="runner rival">RIVAL <b>—</b></div></div><section class="contexto-core"><span class="eyebrow">CORRIDA SEMÂNTICA</span><h2>Encontre o conceito secreto</h2><p>Quanto menor a posição, mais próximo. A palavra do rival permanece privada.</p><form class="word-form"><input autocomplete="off" maxlength="40" placeholder="DIGITE SUA TENTATIVA…" aria-label="Tentativa do Contexto"><button class="neon-button magenta">ENVIAR</button></form><div class="guess-list"></div></section>`;
+  const form=$('.word-form',root),input=$('input',form);form.addEventListener('submit',event=>{event.preventDefault();const guess=input.value.trim();if(guess&&send('match:action',{matchId:currentMatch.id,action:{guess}}))input.value='';});input.focus();
+  root._apply=result=>{const row=create('article',`guess-row ${result.temperature}`);row.innerHTML=`<b>${result.guess}</b><strong>#${result.rank}</strong>`;$('.guess-list',root).prepend(row);$('.runner.you b',root).textContent=`#${result.bestRank}`;tone(result.rank===1?720:Math.max(180,520-result.rank/30));};
+}
+
+function applyActionResult(result){const root=$('#pvpSurface');root?._apply?.(result);}
+function startClock(){clearInterval(clockTimer);const update=()=>{if(!currentMatch?.endAt)return;const remaining=Math.max(0,currentMatch.endAt-Date.now()),total=currentMatch.durationMs||120_000,seconds=Math.ceil(remaining/1000);$('#pvpTimer').textContent=`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;const ring=$('#countdownRing');ring.style.setProperty('--progress',`${remaining/total*100}%`);ring.classList.toggle('danger',remaining<=10_000);};update();clockTimer=setInterval(update,250);}
 
 function showResult(message){
-  clearInterval(countdownTimer);currentResult=message.result;currentMatch=currentMatch||{id:message.result.matchId};currentMatch.status='ended';session.player=message.profile;renderProfile(message.profile);$('#pvpSurface').hidden=true;const panel=$('#pvpResult');panel.hidden=false;const won=currentResult.outcome==='win',draw=currentResult.outcome==='draw';$('#pvpResultIcon').textContent=won?'🏆':draw?'≈':'◇';$('#pvpResultTitle').textContent=won?'Você venceu!':draw?'Empate técnico':'Derrota por pouco';$('#pvpResultPhrase').textContent=currentResult.phrase;$('#pvpAnswers').textContent=currentResult.answers?.length?`Resposta${currentResult.answers.length>1?'s':''}: ${currentResult.answers.join(', ')}`:'';
-  const comparison=$('#pvpComparison');comparison.replaceChildren();for(const playerId of Object.keys(currentResult.players)){const stats=currentResult.players[playerId],row=create('div',playerId===session.player.id?'you':'');row.append(create('strong','',playerId===session.player.id?'Você':message.opponent.name),create('span','',`${formatNumber(stats.score)} pts`),create('small','',`${stats.attempts} ações • ${stats.words} palavras • ${(stats.elapsedMs/1000).toFixed(1)}s • sequência ${stats.maxStreak}`),create('small','',`Principal erro: ${stats.principalError}`));comparison.append(row);}setConnection('ended','Partida encerrada • resultado calculado pelo servidor');$('#shareLatestBtn').disabled=false;loadLobbyData();
+  clearInterval(clockTimer);arenaAbort.abort();arenaAbort=new AbortController();currentResult=message.result;session.player=message.profile;currentOpponent=message.opponent;ui()?.renderProfile(message.profile);$('#pvpSurface').hidden=true;$('#pvpResult').hidden=false;
+  const won=currentResult.outcome==='win';$('#pvpResultIcon').textContent=won?'✦':currentResult.outcome==='draw'?'◇':'×';$('#pvpResultTitle').textContent=won?'VITÓRIA':currentResult.outcome==='draw'?'PARTIDA ANULADA':'DERROTA';$('#pvpResultPhrase').textContent=currentResult.phrase;
+  const own=currentResult.players[session.player.id],opponent=currentResult.players[currentOpponent.id],metric=currentResult.mode==='quarteto'?['PALAVRAS',`${own.solved}/4`,`${opponent.solved}/4`]:['MELHOR POSIÇÃO',`#${own.bestRank}`,`#${opponent.bestRank}`];
+  $('#pvpComparison').innerHTML=`<div><strong>VOCÊ</strong><span>${metric[1]}</span><small>${metric[0]} • ${own.attempts} tentativas</small></div><div><strong>${escapeHtml(currentOpponent.name)}</strong><span>${metric[2]}</span><small>${metric[0]} • ${opponent.attempts} tentativas</small></div>`;
+  $('#pvpAnswers').textContent=`Resposta${currentResult.answers.length>1?'s':''}: ${currentResult.answers.join(' • ')}`;$('#pvpIntegrity').textContent=`Prova ${currentResult.integrityProof.commitHash.slice(0,18)}… • cadeia ${currentResult.integrityProof.finalEventHash?.slice(0,18)||'—'}…`;
+  $('#seriesState').textContent=currentResult.series?`SÉRIE ${Object.values(currentResult.series.wins).join(' × ')}`:currentResult.matchType.toUpperCase();
+  latestShare=`${modeNames[currentResult.mode]} • ${won?'VITÓRIA':'RESULTADO'}\n${metric[1]} vs ${metric[2]}\n${currentResult.phrase}\nProve que você é melhor na Léxora Arena.`;tone(won?840:180);ui()?.reloadData();
 }
 
-function renderProfile(profile){if(!profile)return;$('#balanceText').textContent=`${formatNumber(profile.credits)} CR`;$('#profileName').textContent=profile.name;const metrics=$('#profileMetrics');metrics.replaceChildren();for(const [value,label] of [[profile.rating,'rating Elo'],[profile.level,'nível'],[profile.wins,'vitórias'],[profile.winStreak,'sequência']]){const item=create('div');item.append(create('b','',String(value)),create('span','',label));metrics.append(item);}const recent=$('#recentMatches');recent.replaceChildren();if(!profile.history?.length)recent.append(create('p','','Nenhuma partida disputada.'));else for(const match of profile.history.slice(0,5)){const row=create('div',`recent-${match.result}`);row.append(create('b','',match.result==='win'?'Vitória':match.result==='loss'?'Derrota':'Empate'),create('span','',`${match.opponentName} • ${match.ratingDelta>=0?'+':''}${match.ratingDelta} Elo`));recent.append(row);}}
+function escapeHtml(value){return String(value||'').replace(/[&<>"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));}
+async function shareLatest(){if(!latestShare)return ui()?.toast('Conclua uma partida primeiro.','error');try{await navigator.clipboard.writeText(latestShare);ui()?.toast('Resultado copiado.');}catch{ui()?.modal('Compartilhe seu resultado',latestShare,'◇');}}
+function shareInvite(code){const url=`${location.origin}${location.pathname}?challenge=${code}`;navigator.clipboard?.writeText(url).then(()=>ui()?.modal('Desafio criado','Link copiado. Envie para seu rival; ele terá 10 minutos para aceitar.','◇')).catch(()=>ui()?.modal('Desafio criado',url,'◇'));ui()?.reloadData();}
+function tone(frequency=240){if(!ui()?.soundEnabled())return;try{const context=new AudioContext(),oscillator=context.createOscillator(),gain=context.createGain();oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.035,context.currentTime);gain.gain.exponentialRampToValueAtTime(.001,context.currentTime+.12);oscillator.connect(gain).connect(context.destination);oscillator.start();oscillator.stop(context.currentTime+.13);}catch{}}
 
-async function loadLobbyData(){try{const [rankingResponse,tournamentsResponse]=await Promise.all([fetch('/api/rankings?period=all'),fetch('/api/tournaments')]);renderRanking((await rankingResponse.json()).ranking||[]);renderTournaments((await tournamentsResponse.json()).tournaments||[]);}catch{}}
-function renderRanking(ranking){const list=$('#rankingList');list.replaceChildren();if(!ranking.length)return list.append(create('li','','Aguardando as primeiras partidas.'));for(const player of ranking.slice(0,8)){const item=create('li');item.append(create('b','',`#${player.position}`),create('span','',player.name),create('strong','',`${player.rating} Elo`));list.append(item);}}
-function renderTournaments(tournaments){const grid=$('#tournamentGrid');grid.replaceChildren();for(const tournament of tournaments){const card=create('article','tournament-card'),top=create('div');top.append(create('span','',`${tournament.size} JOGADORES`),create('b','',tournament.status==='registration'?'INSCRIÇÕES':tournament.status==='completed'?'ENCERRADO':'EM ANDAMENTO'));const title=create('h3','',tournament.name),description=create('p','',`${modeNames[tournament.mode]} • entrada ${tournament.entryCredits} CR • prêmio virtual ${tournament.virtualPrizePool} CR`),footer=create('div'),players=create('span','',`${tournament.players.length}/${tournament.size} inscritos`),actions=create('div','tournament-actions'),details=create('button','','Ver chave'),join=create('button','', 'Inscrever');details.addEventListener('click',()=>showTournament(tournament));join.disabled=tournament.status!=='registration'||tournament.players.some(player=>player.id===session?.player?.id);join.addEventListener('click',()=>joinTournament(tournament.id));actions.append(details,join);footer.append(players,actions);card.append(top,title,description,footer);grid.append(card);}}
-function showTournament(tournament){
-  const overlay=create('div','tournament-overlay'),dialog=create('section','tournament-dialog'),header=create('header'),titleWrap=create('div'),close=create('button','','×');titleWrap.append(create('span','eyebrow','CHAVE VIRTUAL'),create('h2','',tournament.name),create('p','',`${tournament.players.length}/${tournament.size} jogadores • comissão apenas demonstrativa de ${tournament.commissionPercent}% • prêmio ${tournament.virtualPrizePool} CR`));close.setAttribute('aria-label','Fechar chave');close.addEventListener('click',()=>overlay.remove());header.append(titleWrap,close);dialog.append(header);
-  const bracket=create('div','bracket-view');for(const round of tournament.bracket.rounds){const column=create('div','bracket-round');column.append(create('h3','',round.name));for(const match of round.matches){const card=create('div','bracket-match');for(const playerId of match.playerIds){const player=tournament.players.find(item=>item.id===playerId);const line=create('span',playerId===match.winnerId?'winner':'',player?.name||'Aguardando jogador');card.append(line);}column.append(card);}bracket.append(column);}const third=create('div','bracket-round');third.append(create('h3','','3º lugar'));const thirdMatch=create('div','bracket-match');for(const playerId of tournament.bracket.thirdPlace.playerIds){const player=tournament.players.find(item=>item.id===playerId);thirdMatch.append(create('span',playerId===tournament.bracket.thirdPlace.winnerId?'winner':'',player?.name||'Aguardando semifinal'));}third.append(thirdMatch);bracket.append(third);dialog.append(bracket);
-  if(tournament.podium){const podium=create('div','virtual-podium');for(const [place,label] of [['second','2º'],['first','1º'],['third','3º']]){const player=tournament.players.find(item=>item.id===tournament.podium[place]),step=create('div',place);step.append(create('b','',label),create('span','',player?.name||'—'));podium.append(step);}dialog.append(podium);}
-  dialog.append(create('p','tournament-history',`${tournament.history.length} eventos registrados no histórico deste torneio.`));overlay.append(dialog);overlay.addEventListener('click',event=>{if(event.target===overlay)overlay.remove();});document.body.append(overlay);
-}
-async function joinTournament(tournamentId){try{await post('/api/tournaments/join',{tournamentId,playerId:session.player.id,token:session.token});session=await post('/api/pvp/session',{playerId:session.player.id,token:session.token});renderProfile(session.player);loadLobbyData();ui()?.toast('Inscrição virtual confirmada.');}catch(error){ui()?.toast(error.message,'error');}}
+document.addEventListener('visibilitychange',()=>{if(currentMatch?.status==='active')send('telemetry:focus',{matchId:currentMatch.id,focused:!document.hidden});});
+document.addEventListener('click',event=>{const mode=event.target.closest('[data-play]')?.dataset.play;if(mode)joinQueue(mode);const code=event.target.closest('[data-join-challenge]')?.dataset.joinChallenge;if(code)send('friend:join',{code});});
+$('#friendBtn').addEventListener('click',()=>{const config=ui()?.getPlayConfig();send('friend:create',{mode:'quarteto',...config});});
+$('#pvpBackBtn').addEventListener('click',()=>{if(queued)send('queue:leave');else if(currentMatch&&currentMatch.status!=='ended'){if(confirm('Sair agora causará derrota por abandono. Continuar?'))send('match:abandon',{matchId:currentMatch.id});}else showLobby();});
+$('#resultLobbyBtn').addEventListener('click',showLobby);$('#rematchBtn').addEventListener('click',()=>send('match:rematch',{matchId:currentResult.matchId,acceptedEntryCents:currentMatch?.financial?.entryCents}));$('#copyResultBtn').addEventListener('click',shareLatest);
+$('#reportRivalBtn').addEventListener('click',()=>currentOpponent&&send('player:report',{targetId:currentOpponent.id,reason:'conduta_suspeita'}));$('#blockRivalBtn').addEventListener('click',()=>currentOpponent&&send('player:block',{targetId:currentOpponent.id}));
 
-async function shareInvite(code){const url=new URL(location.href);url.search='';url.searchParams.set('challenge',code);try{await navigator.clipboard.writeText(url.href);ui()?.modal('Convite copiado',`Envie o link ao seu amigo. O convite ${code} expira em 10 minutos.`,'◎');}catch{ui()?.modal('Código do desafio',`Peça ao seu amigo para abrir este código: ${code}`,'◎');}}
-function shareText(){if(!currentResult)return;return `Joguei uma partida no Lexora Arena.\n${currentResult.phrase}\nAgora quero revanche.`;}
-async function copyResult(){const text=shareText();if(!text)return ui()?.toast('Dispute uma partida primeiro.','error');try{await navigator.clipboard.writeText(text);ui()?.toast('Resultado copiado.');}catch{ui()?.modal('Compartilhe seu resultado',text,'↗');}}
-
-document.addEventListener('click',event=>{const mode=event.target.closest('[data-pvp]')?.dataset.pvp;if(mode)joinQueue(mode);});
-$('#pvpBackBtn').addEventListener('click',()=>{if(queued){send('queue:leave');return;}if(currentMatch&&currentMatch.status!=='ended'&&confirm('Abandonar esta partida dará a vitória ao adversário. Continuar?'))send('match:abandon',{matchId:currentMatch.id});else if(!currentMatch||currentMatch.status==='ended')showLobby();});
-$('#resultLobbyBtn').addEventListener('click',showLobby);$('#rematchBtn').addEventListener('click',()=>{if(currentResult)send('match:rematch',{matchId:currentResult.matchId});});$('#copyResultBtn').addEventListener('click',copyResult);$('#shareLatestBtn').addEventListener('click',copyResult);
-$('#friendBtn').addEventListener('click',()=>send('friend:create',{mode:'termo',language:ui()?.getLanguage()||'mixed'}));
-$('#profileBtn').addEventListener('click',async()=>{const name=prompt('Nome público na arena:',session?.player?.name||'');if(!name)return;try{const response=await post('/api/pvp/profile',{playerId:session.player.id,token:session.token,name});session.player=response.player;renderProfile(response.player);ui()?.toast('Perfil atualizado.');}catch(error){ui()?.toast(error.message,'error');}});
-
-initialize().catch(error=>{setConnection('error','Não foi possível criar a sessão.');ui()?.toast(error.message,'error');});
+window.LexoraPvp={joinQueue,joinFinancialQueue,shareLatest};void initialize();

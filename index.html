@@ -3,97 +3,118 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#09070f">
-  <meta name="description" content="Léxora Duelo — arena PVP de jogos de palavras em tempo real.">
-  <title>Léxora — Arena de palavras</title>
-  <link rel="stylesheet" href="styles/main.css?v=6">
+  <meta name="theme-color" content="#02050a">
+  <meta name="description" content="Léxora Arena — Quarteto, Contexto, rankings e torneios P2P entre jogadores reais.">
+  <title>Léxora Arena — Prove que você é melhor</title>
+  <link rel="stylesheet" href="styles/main.css?v=10">
 </head>
 <body>
-  <div class="ambient" aria-hidden="true"></div>
-  <header class="topbar">
-    <button class="brand" id="homeBtn" aria-label="Voltar ao lobby"><span class="brandmark">L</span><span>LÉX<span>ORA</span></span></button>
-    <nav class="nav-actions" aria-label="Conta">
-      <button class="icon-btn" id="soundBtn" aria-label="Alternar sons">♪</button>
-      <div class="balance"><small>CRÉDITOS DEMO</small><strong id="balanceText">—</strong></div>
-      <button class="primary small" id="profileBtn">Meu perfil</button>
+  <div class="world" aria-hidden="true"><i></i><i></i><i></i></div>
+  <aside class="sidebar" aria-label="Navegação principal">
+    <button class="brand" data-view="home" aria-label="Léxora Arena, início"><span class="brand-glyph">L</span><span><b>LÉXORA</b><small>ARENA DE PALAVRAS</small></span></button>
+    <nav>
+      <button class="active" data-view="home"><span>⌂</span>Início</button>
+      <button data-view="play"><span>⚡</span>Jogar</button>
+      <button data-view="tournaments"><span>♜</span>Torneios</button>
+      <button data-view="ranking"><span>▥</span>Ranking</button>
+      <button data-view="challenges"><span>◇</span>Desafios</button>
+      <button data-view="history"><span>↻</span>Histórico</button>
+      <button data-view="wallet"><span>◈</span>Carteira</button>
+      <button data-view="profile"><span>◎</span>Perfil</button>
     </nav>
-  </header>
+    <div class="fair-card"><span>FAIR PLAY</span><b>Servidor autoritativo</b><small>Sem bots ocultos. Mesmas condições. Resultado auditável.</small></div>
+  </aside>
 
-  <main>
-    <section id="lobby" class="screen active">
-      <div class="hero">
-        <div class="hero-copy">
-          <span class="eyebrow"><i></i> LEXORA DUELO • PVP AO VIVO</span>
-          <h1>1 minuto. 1 adversário.<br><em>1 vencedor.</em></h1>
-          <p>Entre na fila, receba o mesmo desafio do seu rival e vença por habilidade — sem bots e sem resultados manipulados.</p>
-          <div class="hero-actions">
-            <button class="primary" data-pvp="termo">Encontrar adversário <span>→</span></button>
-            <span class="entry">Entrada virtual <b>2 créditos demo</b></span>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="mobile-brand"><span class="brand-glyph">L</span><b>LÉXORA</b></div>
+      <div class="live-state"><i></i><span id="onlinePlayers">0 online</span></div>
+      <div class="top-actions">
+        <button class="icon-button" id="soundBtn" aria-label="Alternar sons">♪</button>
+        <button class="wallet-chip" data-view="wallet"><small>CARTEIRA</small><strong id="balanceText">Modo grátis</strong></button>
+        <button class="avatar-button" data-view="profile" aria-label="Abrir perfil"><span id="avatarInitial">J</span><i></i></button>
+      </div>
+    </header>
+
+    <main>
+      <section id="lobby" class="screen active">
+        <section class="hero-panel" data-section="home">
+          <div class="hero-copy">
+            <span class="eyebrow"><i></i> COMPETIÇÃO P2P • JOGADORES REAIS</span>
+            <h1>PALAVRAS.<br><em>ESTRATÉGIA.</em><br><strong>VITÓRIA.</strong></h1>
+            <p>Prove que você é melhor. Enfrente rivais nas mesmas condições, suba nos rankings e conquiste torneios.</p>
+            <button class="neon-button cyan" data-scroll="play">JOGAR AGORA <span>››</span></button>
           </div>
-        </div>
-        <div class="event-panel">
-          <span>PRÓXIMO TORNEIO DEMO EM</span><strong id="countdown">00:00:00</strong>
-          <div class="prize"><small>JOGADORES CONECTADOS</small><b id="onlinePlayers">0 online</b></div>
-          <div class="event-meta"><span>◎ Mesmo desafio</span><span>⚖ Resultado real</span></div>
-          <p class="demo-notice">Créditos virtuais • dinheiro real desativado</p>
-        </div>
-      </div>
+          <article class="profile-hero holographic-card">
+            <div class="profile-orbit"><span id="heroInitial">J</span><i></i></div>
+            <div class="profile-identity"><small>COMPETIDOR</small><h2 id="profileName">Conectando…</h2><p id="profileDivision">Arena desde agora</p></div>
+            <div class="rating-duo">
+              <div class="cyan"><small>QUARTETO RATING</small><strong id="quartetoRating">1000</strong><span id="quartetoDivision">Prata III</span></div>
+              <div class="magenta"><small>CONTEXTO RATING</small><strong id="contextoRating">1000</strong><span id="contextoDivision">Prata III</span></div>
+            </div>
+          </article>
+        </section>
 
-      <section class="games-section">
-        <div class="section-heading"><div><span class="eyebrow">ESCOLHA SEU DESAFIO</span><h2>Arenas abertas agora</h2></div><p>Partidas rápidas. Habilidade real.</p></div>
-        <div class="language-switch" aria-label="Idioma das palavras">
-          <span>IDIOMA DA RODADA</span>
-          <button data-language="pt">🇧🇷 Português</button>
-          <button data-language="en">🇺🇸 English</button>
-          <button class="active" data-language="mixed">🌐 Misto</button>
-        </div>
-        <p class="language-stock" id="languageStock">Carregando o estoque linguístico…</p>
-        <div class="game-grid">
-          <article class="game-card violet"><span class="game-icon">◆</span><span class="live">PVP</span><h3>Quarteto Masters</h3><p>Os dois rivais recebem as mesmas quatro palavras.</p><div class="card-bottom"><b>2 CR demo</b><button data-pvp="quarteto">Duelo →</button></div></article>
-          <article class="game-card cyan"><span class="game-icon">◎</span><span class="live">TREINO</span><h3>Contexto</h3><p>Desafio semântico diário, gratuito e determinístico.</p><div class="card-bottom"><b>Grátis</b><button data-game="contexto">Treinar →</button></div></article>
-          <article class="game-card amber"><span class="game-icon">⚡</span><span class="live">PVP • 60 SEG</span><h3>Termo Blitz</h3><p>A mesma palavra, seis tentativas e desempate por tempo.</p><div class="card-bottom"><b>2 CR demo</b><button data-pvp="termo">Duelo →</button></div></article>
-          <article class="game-card green"><span class="game-icon">A</span><span class="live">PVP • 60 SEG</span><h3>Anagrama Rush</h3><p>As mesmas letras, palavras validadas pelo servidor.</p><div class="card-bottom"><b>2 CR demo</b><button data-pvp="anagrama">Duelo →</button></div></article>
-        </div>
-      </section>
-      <section class="lobby-data-grid">
-        <article class="data-panel"><header><div><span class="eyebrow">SUA PROGRESSÃO</span><h3 id="profileName">Criando sessão…</h3></div><button id="friendBtn">Desafiar amigo</button></header><div class="profile-metrics" id="profileMetrics"></div><div class="recent-list" id="recentMatches"><p>Nenhuma partida disputada.</p></div></article>
-        <article class="data-panel"><header><div><span class="eyebrow">RANKING GERAL</span><h3>Melhores da arena</h3></div><button id="shareLatestBtn" disabled>Compartilhar resultado</button></header><ol class="ranking-list" id="rankingList"><li>Aguardando jogadores…</li></ol></article>
-      </section>
-      <section class="tournaments-section"><div class="section-heading"><div><span class="eyebrow">TORNEIOS VIRTUAIS</span><h2>Próximas chaves</h2></div><p>8, 16 e 32 jogadores • sem dinheiro real</p></div><div class="tournament-grid" id="tournamentGrid"></div></section>
-      <section class="trust"><div><b>PVP</b><span>servidor autoritativo</span></div><div><b>0</b><span>bots na fila</span></div><div><b>Elo</b><span>ranking por habilidade</span></div><div><b>100%</b><span>créditos virtuais</span></div></section>
-    </section>
+        <section class="play-section" id="playSection" data-section="play">
+          <div class="section-title"><div><span class="eyebrow">ESCOLHA SUA ARENA</span><h2>Duas disciplinas. Um vencedor.</h2></div><p>O servidor cria um novo desafio para cada partida.</p></div>
+          <div class="play-toolbar glass-card">
+            <div><small>TIPO DE PARTIDA</small><div class="segmented" id="matchTypeSelect"><button data-match-type="casual">CASUAL</button><button class="active" data-match-type="ranked">RANKED</button><button data-match-type="rewarded" disabled>PREMIADO</button></div></div>
+            <div><small>SÉRIE</small><div class="segmented" id="bestOfSelect"><button class="active" data-best-of="1">PARTIDA ÚNICA</button><button data-best-of="3">MELHOR DE 3</button></div></div>
+            <div><small>IDIOMA</small><div class="segmented" id="languageSelect"><button class="active" data-language="pt">PT-BR</button><button data-language="en">EN</button><button data-language="mixed">MISTO</button></div></div>
+          </div>
+          <div class="game-grid">
+            <article class="game-card quarteto-card spotlight">
+              <div class="game-symbol"><span></span><span></span><span></span><span></span></div><span class="game-state">120 SEG • PVP</span>
+              <h3>QUARTETO</h3><p>Quatro palavras. Dois jogadores. Um vencedor. Resolva mais e resolva antes.</p>
+              <div class="game-facts"><span>4 palavras simultâneas</span><span>9 tentativas</span><span>Rating próprio</span></div>
+              <button class="neon-button cyan" data-play="quarteto">JOGAR QUARTETO <b>››</b></button>
+            </article>
+            <article class="game-card contexto-card spotlight">
+              <div class="context-symbol"><i></i><i></i><i></i></div><span class="game-state">CORRIDA SEMÂNTICA</span>
+              <h3>CONTEXTO</h3><p>Chegue à palavra secreta antes do rival. Cada tentativa move você pela corrida semântica.</p>
+              <div class="game-facts"><span>Mesma palavra alvo</span><span>30 tentativas</span><span>Rating próprio</span></div>
+              <button class="neon-button magenta" data-play="contexto">JOGAR CONTEXTO <b>››</b></button>
+            </article>
+          </div>
+        </section>
 
-    <section id="pvpArena" class="screen arena-screen" aria-live="polite">
-      <button class="back" id="pvpBackBtn">← Voltar ao lobby</button>
-      <div class="pvp-shell">
+        <section class="tournament-feature gold-card" data-section="tournaments">
+          <div class="trophy" aria-hidden="true">♜</div>
+          <div><span class="eyebrow gold">TORNEIOS</span><h2>Classificação, mata-mata e finais ao vivo.</h2><p>Quando houver um torneio real aberto, ele aparecerá aqui. Nenhuma vaga ou atividade é inventada.</p></div>
+          <div class="tournament-list" id="tournamentGrid"><div class="empty-state"><span>◇</span><b>Nenhum torneio aberto</b><small>Volte em breve para a próxima competição.</small></div></div>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="glass-card" data-section="challenges"><header><div><span class="eyebrow">DESAFIOS ABERTOS</span><h3>Enfrente alguém agora</h3></div><button class="glass-button" id="friendBtn">CRIAR DESAFIO</button></header><div id="challengeList" class="data-list"><div class="empty-state"><span>◇</span><b>Nenhum desafio aberto</b><small>Crie um link e convide um amigo.</small></div></div></article>
+          <article class="glass-card" data-section="ranking"><header><div><span class="eyebrow">RANKING GLOBAL</span><h3>Quem domina a arena</h3></div><div class="tiny-tabs"><button class="active" data-ranking-mode="quarteto">QUARTETO</button><button data-ranking-mode="contexto">CONTEXTO</button></div></header><ol class="ranking-list" id="rankingList"><li class="empty-state">Nenhuma partida ranqueada ainda.</li></ol></article>
+        </section>
+
+        <section class="glass-card history-panel" data-section="history"><header><div><span class="eyebrow">HISTÓRICO</span><h3>Suas partidas recentes</h3></div><button class="glass-button" id="shareLatestBtn" disabled>COMPARTILHAR</button></header><div id="recentMatches" class="data-list"><div class="empty-state"><span>↻</span><b>Nenhuma partida disputada</b><small>Seu primeiro resultado aparecerá aqui.</small></div></div></section>
+
+        <section class="finance-safety glass-card" id="financeStatus" data-section="wallet" aria-live="polite"><div><span class="eyebrow">CARTEIRA E PARTIDAS PREMIADAS</span><h2>Dinheiro real bloqueado com segurança</h2><p>A arquitetura de saldo, ledger e Pix permanece fail-closed. Nada financeiro é mostrado como ativo sem requisitos jurídicos, KYC, antifraude, PostgreSQL, Redis e provedor aprovados.</p></div><div class="finance-actions"><strong>FAIL-CLOSED</strong><button id="financeOpenBtn" class="neon-button cyan" hidden>ABRIR CARTEIRA</button></div></section>
+
+        <section class="fair-play-grid"><article><b>01</b><strong>MESMO DESAFIO</strong><span>Seed e regras idênticas.</span></article><article><b>02</b><strong>SERVIDOR AUTORITATIVO</strong><span>Segredos e placar no backend.</span></article><article><b>03</b><strong>SEM BOTS OCULTOS</strong><span>Fila exclusivamente P2P.</span></article><article><b>04</b><strong>RESULTADO AUDITÁVEL</strong><span>Commit e cadeia de eventos.</span></article></section>
+      </section>
+
+      <section id="pvpArena" class="screen arena-screen" aria-live="polite">
+        <div class="arena-top"><button class="back-button" id="pvpBackBtn">← SAIR DA PARTIDA</button><strong id="pvpMode">QUARTETO</strong><span id="seriesState">PARTIDA ÚNICA</span></div>
         <div class="connection-state" id="connectionState" data-state="connecting"><i></i><span>Conectando à arena…</span></div>
-        <header class="pvp-scoreboard">
-          <div><small>VOCÊ</small><strong id="pvpYouName">Jogador</strong><b id="pvpYouScore">0</b></div>
-          <span class="versus">VS</span>
-          <div><small>ADVERSÁRIO</small><strong id="pvpOpponentName">Procurando…</strong><b id="pvpOpponentScore">0</b></div>
-        </header>
-        <div class="pvp-status"><span id="pvpMode">LEXORA DUELO</span><strong id="pvpTimer">—</strong></div>
-        <div id="pvpSurface" class="game-surface pvp-surface"></div>
-        <div class="pvp-result" id="pvpResult" hidden>
-          <span class="modal-icon" id="pvpResultIcon">◇</span><h2 id="pvpResultTitle">Resultado</h2><p class="result-phrase" id="pvpResultPhrase"></p>
-          <div class="result-comparison" id="pvpComparison"></div><p class="result-answer" id="pvpAnswers"></p>
-          <div class="result-actions"><button class="primary" id="rematchBtn">Jogar revanche</button><button id="copyResultBtn">Copiar resultado</button><button id="resultLobbyBtn">Voltar ao lobby</button></div>
-        </div>
-      </div>
-    </section>
+        <section class="versus-board">
+          <article class="player-card you"><span class="mini-avatar" id="pvpYouAvatar">J</span><div><small>VOCÊ</small><strong id="pvpYouName">Jogador</strong><b id="pvpYouScore">—</b></div></article>
+          <div class="countdown-ring" id="countdownRing"><div><small>TEMPO</small><strong id="pvpTimer">02:00</strong></div></div>
+          <article class="player-card rival"><div><small>RIVAL</small><strong id="pvpOpponentName">Procurando…</strong><b id="pvpOpponentScore">—</b></div><span class="mini-avatar" id="pvpRivalAvatar">?</span></article>
+        </section>
+        <div id="pvpSurface" class="pvp-surface"></div>
+        <div class="pvp-result" id="pvpResult" hidden><span class="result-burst" id="pvpResultIcon">✦</span><small>RESULTADO OFICIAL</small><h2 id="pvpResultTitle">Vitória</h2><p id="pvpResultPhrase"></p><div id="pvpComparison" class="result-comparison"></div><p id="pvpAnswers" class="result-answer"></p><p id="pvpIntegrity" class="integrity-proof"></p><div class="result-actions"><button class="neon-button magenta" id="rematchBtn">REVANCHE</button><button class="glass-button" id="copyResultBtn">COMPARTILHAR</button><button class="glass-button" id="reportRivalBtn">DENUNCIAR</button><button class="glass-button" id="blockRivalBtn">BLOQUEAR</button><button class="glass-button" id="resultLobbyBtn">VOLTAR</button></div></div>
+      </section>
+    </main>
+  </div>
 
-    <section id="arena" class="screen arena-screen" aria-live="polite">
-      <button class="back" id="backBtn">← Voltar ao lobby</button>
-      <div class="arena-shell">
-        <header class="arena-head"><div><span class="eyebrow" id="arenaTag">ARENA</span><h2 id="arenaTitle">Quarteto Masters</h2></div><div class="score"><small id="scoreLabel">TENTATIVAS</small><strong id="scoreValue">0 / 6</strong></div></header>
-        <div id="gameSurface" class="game-surface"></div>
-      </div>
-    </section>
-  </main>
-
-  <div class="modal" id="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="close" id="closeModal" aria-label="Fechar">×</button><span class="modal-icon" id="modalIcon">✦</span><h2 id="modalTitle">Tudo certo!</h2><p id="modalText"></p><button class="primary full" id="modalAction">Continuar</button></div></div>
+  <nav class="bottom-nav" aria-label="Navegação móvel"><button class="active" data-view="home"><span>⌂</span>Início</button><button data-view="play"><span>⚡</span>Jogar</button><button data-view="tournaments"><span>♜</span>Torneios</button><button data-view="ranking"><span>▥</span>Ranking</button><button data-view="profile"><span>◎</span>Perfil</button></nav>
+  <div class="modal" id="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="close" id="closeModal" aria-label="Fechar">×</button><span class="modal-icon" id="modalIcon">✦</span><h2 id="modalTitle">Tudo certo</h2><p id="modalText"></p><button class="neon-button cyan" id="modalAction">CONTINUAR</button></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="scripts/app.js?v=6"></script>
-  <script type="module" src="scripts/pvp.js?v=1"></script>
+  <script type="module" src="scripts/app.js?v=10"></script>
+  <script type="module" src="scripts/pvp.js?v=10"></script>
+  <script type="module" src="scripts/finance.js?v=2"></script>
 </body>
 </html>

@@ -4,10 +4,10 @@ import { readFile } from 'node:fs/promises';
 
 const root = new URL('../', import.meta.url);
 
-test('a página principal contém as quatro arenas e scripts locais', async () => {
+test('a página principal é focada apenas em Quarteto e Contexto', async () => {
   const html = await readFile(new URL('index.html', root), 'utf8');
-  assert.match(html,/data-game="contexto"/);
-  for (const game of ['quarteto','termo','anagrama']) assert.match(html,new RegExp(`data-pvp="${game}"`));
+  for (const game of ['quarteto','contexto']) assert.match(html,new RegExp(`data-play="${game}"`));
+  assert.doesNotMatch(html,/Termo Blitz|Anagrama Rush|Palavra Relâmpago/i);
   assert.match(html, /scripts\/app\.js/);
   assert.match(html, /scripts\/pvp\.js/);
   assert.match(html, /styles\/main\.css/);

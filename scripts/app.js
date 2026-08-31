@@ -1,59 +1,80 @@
-const $=(q,root=document)=>root.querySelector(q);
-const titles={quarteto:'Quarteto Masters',contexto:'Contexto',termo:'Termo Blitz',anagrama:'Anagrama Rush'};
-let sound=true,activeCleanup=null;
-let activeLanguage=localStorage.getItem('lexora_language')||'mixed';
-let dictionaryCatalog=null;
-const number=value=>new Intl.NumberFormat('pt-BR').format(value);
+const $=(selector,root=document)=>root.querySelector(selector);
+const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
+const state={language:'pt',matchType:'ranked',bestOf:1,rankingMode:'quarteto',player:null,sound:true};
+let toastTimer;
 
-const audio={ctx:null,play(type='tap'){
-  if(!sound)return; try{this.ctx||=new AudioContext();const o=this.ctx.createOscillator(),g=this.ctx.createGain();const map={tap:[420,.035],good:[720,.13],bad:[145,.15],win:[980,.35]};const [freq,duration]=map[type]||map.tap;o.frequency.value=freq;o.type=type==='bad'?'sawtooth':'sine';g.gain.setValueAtTime(.045,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+duration);o.connect(g).connect(this.ctx.destination);o.start();o.stop(this.ctx.currentTime+duration);}catch{} }};
-
-function toast(text,type='info'){const el=$('#toast');el.textContent=text;el.dataset.type=type;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);audio.play(type==='error'?'bad':'good');}
-function modal(title,text,icon='✦'){ $('#modalTitle').textContent=title;$('#modalText').textContent=text;$('#modalIcon').textContent=icon;$('#modal').hidden=false;if(icon==='🏆')celebrate(); }
-function closeModal(){ $('#modal').hidden=true; }
-function celebrate(){for(let i=0;i<24;i++){const p=document.createElement('i');p.className='reward-particle';p.style.setProperty('--x',`${Math.random()*100}vw`);p.style.setProperty('--d',`${.7+Math.random()}s`);document.body.appendChild(p);setTimeout(()=>p.remove(),1700);}audio.play('win');}
-function countdown(){const now=new Date(),target=new Date();target.setHours(21,0,0,0);if(now>=target)target.setDate(target.getDate()+1);const s=Math.floor((target-now)/1000);$('#countdown').textContent=[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(n=>String(n).padStart(2,'0')).join(':');}
-function updateLanguageStock(){const stock=dictionaryCatalog?.languages?.[activeLanguage];if(!stock)return;$('#languageStock').textContent=`${number(stock.fiveLetters)} respostas de 5 letras • ${number(stock.anagramWords)} palavras para Anagrama • ${number(stock.contexts)} conceitos semânticos`;}
-async function loadDictionaryCatalog(){try{const response=await fetch('/api/catalog');if(!response.ok)throw new Error();dictionaryCatalog=await response.json();updateLanguageStock();}catch{$('#languageStock').textContent='Estoque protegido e atualizado no servidor.';}}
-async function api(path,data){const response=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Falha de comunicação.');return payload;}
-function cleanup(){if(activeCleanup){activeCleanup();activeCleanup=null;}}
-function showLobby(){cleanup();$('#arena').classList.remove('active');$('#pvpArena').classList.remove('active');$('#lobby').classList.add('active');window.scrollTo({top:0,behavior:'smooth'});}
-function join(game){openGame(game);}
-async function openGame(game){cleanup();$('#lobby').classList.remove('active');$('#arena').classList.add('active');$('#arenaTitle').textContent=titles[game];$('#arenaTag').textContent='PREPARANDO RODADA SEGURA';$('#gameSurface').innerHTML='<div class="game-loader"><i></i><b>Sorteando desafio...</b><span>As respostas permanecem protegidas no servidor.</span></div>';window.scrollTo(0,0);try{const session=await api('/api/games/start',{mode:game,language:activeLanguage});const lang={pt:'PT-BR',en:'EN-US',mixed:'PT + EN'}[session.language];$('#arenaTag').textContent=`${lang} • ${session.dayId} • RODADA ${session.roundId}`;renderGame(game,session);}catch(error){modal('Servidor indisponível',error.message,'!');showLobby();}}
-function resultModal(result,success='Rodada concluída'){const answer=result.answers?.join(', ')||result.answer;modal(result.win?'Vitória!':success,`${result.win?'Excelente desempenho! ':''}Pontuação: ${result.score||0}.${answer?` Resposta${Array.isArray(answer)?'s':''}: ${Array.isArray(answer)?answer.join(', '):answer}.`:''}`,result.win?'🏆':'◇');}
-function formHTML(text,placeholder='Digite uma palavra'){return `<p class="mode-instruction">${text}</p><form class="word-input"><input autocomplete="off" placeholder="${placeholder}" aria-label="Palavra"><button class="primary">Enviar</button></form><div class="guess-list"></div>`;}
-function prependGuess(list,{word,detail,className='',progress=null}){const row=document.createElement('div');row.className=`guess-row ${className}`.trim();const strong=document.createElement('b'),span=document.createElement('span');strong.textContent=word;span.textContent=detail;row.append(strong,span);if(progress!==null){const bar=document.createElement('i');bar.style.setProperty('--rank',`${progress}%`);row.append(bar);}list.prepend(row);return row;}
-function renderGame(game,session){if(game==='quarteto')renderQuarteto(session);if(game==='contexto')renderContexto(session);if(game==='termo')renderTermo(session);if(game==='anagrama')renderAnagrama(session);}
-
-function renderQuarteto(session){
-  const surface=$('#gameSurface'),rows=['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];let typing='',busy=false,attempt=0,solved=[false,false,false,false];
-  surface.innerHTML=`<div class="competitive-strip"><span>🔒 Respostas no servidor</span><span>♻ Nova combinação por partida</span><span>🏅 Pontuação competitiva</span></div><div class="quarteto-help"><b>Uma palavra, quatro tabuleiros.</b><span>Descubra as 4 palavras em até ${session.maxAttempts} tentativas.</span></div><div class="quarteto-stage">${[0,1,2,3].map(q=>`<section class="quarteto-card" data-board="${q}"><header><span>PALAVRA ${q+1}</span><b id="qStatus${q}">EM JOGO</b></header><div class="quarteto-grid">${Array.from({length:session.maxAttempts},(_,r)=>`<div class="quarteto-row" data-row="${r}">${Array.from({length:5},(_,c)=>`<span class="quarteto-tile" data-col="${c}"></span>`).join('')}</div>`).join('')}</div></section>`).join('')}</div><p class="quarteto-message" id="quartetoMessage">Digite uma palavra de cinco letras.</p><div class="quarteto-keyboard">${rows.map(row=>`<div>${[...row].map(k=>`<button data-key="${k}">${k}</button>`).join('')}</div>`).join('')}<div><button class="wide" data-key="ENTER">ENTER</button><button class="wide" data-key="BACKSPACE">⌫ APAGAR</button></div></div>`;
-  $('#scoreLabel').textContent='CHUTES';$('#scoreValue').textContent=`0 / ${session.maxAttempts}`;
-  const refresh=()=>{for(let q=0;q<4;q++){if(solved[q])continue;surface.querySelectorAll(`[data-board="${q}"] [data-row="${attempt}"] .quarteto-tile`).forEach((tile,i)=>{tile.textContent=typing[i]||'';tile.classList.toggle('typing',!!typing[i]);});}};
-  const updateKeys=boards=>{const w={absent:1,present:2,correct:3};boards.flatMap(b=>b.tiles||[]).forEach(t=>{const key=surface.querySelector(`[data-key="${t.letter}"]`),old=key?.dataset.state;if(key&&(!old||w[t.status]>w[old])){key.dataset.state=t.status;key.className=t.status;}});};
-  const submit=async()=>{if(busy)return;busy=true;try{const result=await api('/api/games/guess',{sessionId:session.sessionId,guess:typing});result.boards.forEach((board,q)=>{if(!board.tiles)return;const tiles=surface.querySelectorAll(`[data-board="${q}"] [data-row="${attempt}"] .quarteto-tile`);tiles.forEach((tile,i)=>{setTimeout(()=>{tile.textContent=board.tiles[i].letter;tile.className=`quarteto-tile ${board.tiles[i].status} reveal`;},i*80);});if(board.solved){surface.querySelector(`[data-board="${q}"]`).classList.add('solved');$(`#qStatus${q}`).textContent='RESOLVIDA';}});updateKeys(result.boards);solved=result.solved;attempt=result.attempts;typing='';$('#scoreValue').textContent=`${attempt} / ${session.maxAttempts}`;$('#quartetoMessage').textContent=`${solved.filter(Boolean).length} de 4 palavras • ${result.score} pontos`;audio.play(solved.some(Boolean)?'good':'tap');if(result.finished)setTimeout(()=>resultModal(result,'Fim do Quarteto'),500);else refresh();}catch(error){toast(error.message,'error');$('#quartetoMessage').textContent=error.message;}finally{busy=false;}};
-  const keyInput=raw=>{const key=String(raw).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace('Ç','C');if(key==='ENTER')submit();else if(key==='BACKSPACE'){typing=typing.slice(0,-1);refresh();}else if(/^[A-Z]$/.test(key)&&typing.length<5){typing+=key;refresh();audio.play();}};
-  const click=e=>{const key=e.target.closest('[data-key]')?.dataset.key;if(key)keyInput(key);};const keydown=e=>{if($('#arena').classList.contains('active'))keyInput(e.key);};surface.querySelector('.quarteto-keyboard').addEventListener('click',click);document.addEventListener('keydown',keydown);activeCleanup=()=>document.removeEventListener('keydown',keydown);refresh();
+function toast(message,type='success'){
+  const node=$('#toast');node.textContent=message;node.dataset.type=type;node.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>node.classList.remove('show'),3_400);
 }
 
-function renderContexto(session){
-  const surface=$('#gameSurface');surface.innerHTML=`<div class="competitive-strip"><span>📅 Conceito diário</span><span>🚫 Sem palavras repetidas</span><span>🎯 Menor posição vence</span></div><div class="contexto-orbit"><span>◎</span><b>Encontre o conceito secreto</b><small>Quanto menor a posição, mais perto você está.</small></div>${formHTML('Você tem até 30 tentativas. Cada palavra só pode ser usada uma vez.')}`;$('#scoreLabel').textContent='MELHOR POSIÇÃO';$('#scoreValue').textContent='—';
-  const form=$('form',surface),input=$('input',form),list=$('.guess-list',surface);form.addEventListener('submit',async e=>{e.preventDefault();const word=input.value.trim();if(!word)return;try{const r=await api('/api/games/guess',{sessionId:session.sessionId,guess:word});const temperature=['hot','warm','mild','cold'].includes(r.temperature)?r.temperature:'cold';prependGuess(list,{word:r.guess,detail:`#${r.rank}`,className:`contexto-${temperature}`,progress:Math.max(4,100-r.rank/100)});input.value='';$('#scoreValue').textContent=`#${r.bestRank}`;toast(r.rank===1?'Palavra encontrada!':`Posição #${r.rank}`);if(r.finished)resultModal(r,'Rodada encerrada');}catch(error){toast(error.message,'error');input.select();}});input.focus();
+function modal(title,text,icon='✦'){$('#modalTitle').textContent=title;$('#modalText').textContent=text;$('#modalIcon').textContent=icon;$('#modal').hidden=false;$('#modalAction').focus();}
+function closeModal(){$('#modal').hidden=true;}
+function showLobby(){document.querySelectorAll('.screen').forEach(screen=>screen.classList.remove('active'));$('#lobby').classList.add('active');window.scrollTo({top:0,behavior:'smooth'});}
+
+function navigate(view){
+  if(view==='home'){showLobby();window.scrollTo({top:0,behavior:'smooth'});}else{
+    showLobby();const target=$(`[data-section="${view}"]`)||$(`#${view}Section`);target?.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  $$('[data-view]').forEach(button=>button.classList.toggle('active',button.dataset.view===view));
 }
 
-function renderTermo(session){
-  const surface=$('#gameSurface');let attempt=0;surface.innerHTML=`<div class="competitive-strip"><span>🎲 Nova palavra por rodada</span><span>6 tentativas</span><span>⚡ Bônus por velocidade</span></div><div class="termo-grid">${Array.from({length:6},(_,r)=>`<div data-row="${r}">${Array.from({length:5},()=>'<span></span>').join('')}</div>`).join('')}</div>${formHTML('Descubra a palavra de cinco letras. Verde: posição certa. Amarelo: letra presente.')}`;$('#scoreLabel').textContent='CHUTES';$('#scoreValue').textContent='0 / 6';const form=$('form',surface),input=$('input',form),list=$('.guess-list',surface);input.maxLength=5;
-  form.addEventListener('submit',async e=>{e.preventDefault();try{const r=await api('/api/games/guess',{sessionId:session.sessionId,guess:input.value});surface.querySelectorAll(`.termo-grid [data-row="${attempt}"] span`).forEach((tile,i)=>{setTimeout(()=>{tile.textContent=r.tiles[i].letter;tile.className=`${r.tiles[i].status} reveal`;},i*90);});attempt=r.attempts;input.value='';$('#scoreValue').textContent=`${attempt} / 6`;prependGuess(list,{word:r.guess,detail:`${r.score} pts`});if(r.finished)setTimeout(()=>resultModal(r,'Fim do Termo'),500);else input.focus();}catch(error){toast(error.message,'error');input.select();}});input.focus();
+function selectGroup(containerSelector,attribute,callback){
+  $(containerSelector)?.addEventListener('click',event=>{const button=event.target.closest(`[${attribute}]`);if(!button||button.disabled)return;$$(`[${attribute}]`,$(containerSelector)).forEach(item=>item.classList.toggle('active',item===button));callback(button.dataset[attribute.replace('data-','').replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase())]);});
 }
 
-function renderAnagrama(session){
-  const surface=$('#gameSurface');let current='',time=session.duration,timer;surface.innerHTML=`<div class="competitive-strip"><span>🎲 Letras por rodada</span><span>🚫 Sem repetição</span><span>⏱ 90 segundos</span></div><div class="anagrama-clock"><b id="anaTimer">${time}s</b><i id="anaProgress"></i></div><div class="anagrama-current" id="anaCurrent">Monte uma palavra</div><div class="letters anagrama-letters">${session.letters.map((l,i)=>`<button class="letter" data-letter="${l}" data-index="${i}">${l}</button>`).join('')}</div><div class="anagrama-actions"><button id="anaClear">Limpar</button><button id="anaSubmit" class="primary">Validar palavra</button></div><div class="guess-list"></div>`;$('#scoreLabel').textContent='PONTOS';$('#scoreValue').textContent='0';const list=$('.guess-list',surface),display=$('#anaCurrent');
-  const update=()=>{display.textContent=current||'Monte uma palavra';};surface.querySelector('.anagrama-letters').addEventListener('click',e=>{const b=e.target.closest('[data-letter]');if(!b||b.disabled)return;current+=b.dataset.letter;b.disabled=true;update();audio.play();});$('#anaClear').addEventListener('click',()=>{current='';surface.querySelectorAll('[data-letter]').forEach(b=>b.disabled=false);update();});$('#anaSubmit').addEventListener('click',async()=>{if(!current)return;try{const r=await api('/api/games/guess',{sessionId:session.sessionId,guess:current});prependGuess(list,{word:r.guess,detail:`+${r.points} pts`,className:'pop'});$('#scoreValue').textContent=r.score;toast(`+${r.points} pontos`);$('#anaClear').click();}catch(error){toast(error.message,'error');}});
-  timer=setInterval(async()=>{time--;$('#anaTimer').textContent=`${time}s`;$('#anaProgress').style.width=`${time/session.duration*100}%`;if(time<=10)$('#anaTimer').classList.add('danger');if(time<=0){clearInterval(timer);const r=await api('/api/games/finish',{sessionId:session.sessionId});modal('Tempo encerrado',`Pontuação final: ${r.score}. Palavras possíveis: ${r.answer.join(', ')}.`,'⏱');}},1000);activeCleanup=()=>clearInterval(timer);
+function renderProfile(player){
+  state.player=player;const initial=(player.name||'J').slice(0,1).toUpperCase();
+  $('#profileName').textContent=player.name;$('#avatarInitial').textContent=initial;$('#heroInitial').textContent=initial;
+  $('#quartetoRating').textContent=player.quartetoRating;$('#contextoRating').textContent=player.contextoRating;
+  $('#quartetoDivision').textContent=player.divisions.quarteto;$('#contextoDivision').textContent=player.divisions.contexto;
+  $('#profileDivision').textContent=`${player.games} partida${player.games===1?'':'s'} • ${player.wins} vitória${player.wins===1?'':'s'}`;
+  renderHistory(player.history||[]);void loadRankings();
 }
 
-document.addEventListener('click',e=>{const game=e.target.closest('[data-game]')?.dataset.game;if(game)join(game);});
-document.querySelectorAll('[data-language]').forEach(button=>{button.classList.toggle('active',button.dataset.language===activeLanguage);button.addEventListener('click',()=>{activeLanguage=button.dataset.language;localStorage.setItem('lexora_language',activeLanguage);document.querySelectorAll('[data-language]').forEach(item=>item.classList.toggle('active',item===button));updateLanguageStock();window.dispatchEvent(new CustomEvent('lexora:language',{detail:{language:activeLanguage}}));toast(`Idioma: ${button.textContent.trim()}`);});});
-$('#homeBtn').addEventListener('click',showLobby);$('#backBtn').addEventListener('click',showLobby);$('#soundBtn').addEventListener('click',e=>{sound=!sound;e.currentTarget.textContent=sound?'♪':'×';toast(sound?'Sons ativados':'Sons desativados');});$('#closeModal').addEventListener('click',closeModal);$('#modalAction').addEventListener('click',closeModal);$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
-window.LexoraUI={toast,modal,showLobby,getLanguage:()=>activeLanguage,prependGuess};
-countdown();loadDictionaryCatalog();setInterval(countdown,1000);
+function formatTime(ms){if(!Number.isFinite(ms))return '—';const seconds=Math.max(0,Math.round(ms/1000));return `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;}
+function renderHistory(history){
+  const root=$('#recentMatches');root.replaceChildren();
+  if(!history.length){root.innerHTML='<div class="empty-state"><span>↻</span><b>Nenhuma partida disputada</b><small>Seu primeiro resultado aparecerá aqui.</small></div>';$('#shareLatestBtn').disabled=true;return;}
+  history.slice(0,8).forEach(item=>{const row=document.createElement('article');row.className='history-row';const result={win:'VITÓRIA',loss:'DERROTA',draw:'ANULADA'}[item.result];const detail=item.mode==='quarteto'?`${item.summary?.solved??0}/4 • ${formatTime(item.summary?.elapsedMs)}`:`#${item.summary?.bestRank??9999} • ${item.summary?.attempts??0} tentativas`;row.innerHTML=`<div><b>${item.mode.toUpperCase()} • VS ${escapeHtml(item.opponentName)}</b><small>${detail} • ${item.matchType?.toUpperCase()||'RANKED'}</small></div><strong class="${item.result}">${result} ${item.ratingDelta?`${item.ratingDelta>0?'+':''}${item.ratingDelta}`:''}</strong>`;root.append(row);});
+  $('#shareLatestBtn').disabled=false;
+}
+
+function escapeHtml(value){return String(value||'').replace(/[&<>"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));}
+async function getJson(path){const response=await fetch(path),payload=await response.json();if(!response.ok)throw new Error(payload.error||'Falha ao carregar dados.');return payload;}
+
+async function loadRankings(){
+  try{const {ranking}=await getJson(`/api/rankings?period=all&mode=${state.rankingMode}`),root=$('#rankingList');root.replaceChildren();
+    if(!ranking.length){root.innerHTML='<li class="empty-state">Nenhuma partida ranqueada ainda.</li>';return;}
+    ranking.slice(0,8).forEach(entry=>{const li=document.createElement('li');li.innerHTML=`<b>#${entry.position}</b><span>${escapeHtml(entry.name)}<small> ${entry.division}</small></span><strong>${entry.rating}</strong>`;root.append(li);});
+  }catch(error){toast(error.message,'error');}
+}
+
+async function loadTournaments(){
+  try{const {tournaments}=await getJson('/api/tournaments'),root=$('#tournamentGrid');root.replaceChildren();
+    if(!tournaments.length){root.innerHTML='<div class="empty-state"><span>◇</span><b>Nenhum torneio aberto</b><small>Volte em breve para a próxima competição.</small></div>';return;}
+    tournaments.slice(0,3).forEach(item=>{const row=document.createElement('article');row.className='challenge-row';row.innerHTML=`<div><b>${escapeHtml(item.name)} • ${item.mode.toUpperCase()}</b><small>${item.players.length}/${item.size} jogadores • ${item.format.toUpperCase()}</small></div><button class="glass-button" data-tournament-id="${item.id}">VER</button>`;root.append(row);});
+  }catch(error){toast(error.message,'error');}
+}
+
+async function loadChallenges(){
+  try{const {challenges}=await getJson('/api/challenges'),root=$('#challengeList');root.replaceChildren();
+    if(!challenges.length){root.innerHTML='<div class="empty-state"><span>◇</span><b>Nenhum desafio aberto</b><small>Crie um link e convide um amigo.</small></div>';return;}
+    challenges.slice(0,8).forEach(item=>{const row=document.createElement('article');row.className='challenge-row';row.innerHTML=`<div><b>${escapeHtml(item.owner?.name||'Jogador')} • ${item.mode.toUpperCase()}</b><small>${item.matchType.toUpperCase()} • rating ${item.owner?.rating||1000}</small></div><button class="glass-button" data-join-challenge="${item.code}">ACEITAR</button>`;root.append(row);});
+  }catch(error){toast(error.message,'error');}
+}
+
+$$('[data-view]').forEach(button=>button.addEventListener('click',()=>navigate(button.dataset.view)));
+$$('[data-scroll]').forEach(button=>button.addEventListener('click',()=>navigate(button.dataset.scroll)));
+selectGroup('#matchTypeSelect','data-match-type',value=>state.matchType=value);
+selectGroup('#bestOfSelect','data-best-of',value=>state.bestOf=Number(value));
+selectGroup('#languageSelect','data-language',value=>state.language=value);
+$$('[data-ranking-mode]').forEach(button=>button.addEventListener('click',()=>{$$('[data-ranking-mode]').forEach(item=>item.classList.toggle('active',item===button));state.rankingMode=button.dataset.rankingMode;void loadRankings();}));
+$$('.spotlight').forEach(card=>card.addEventListener('pointermove',event=>{const bounds=card.getBoundingClientRect();card.style.setProperty('--mx',`${event.clientX-bounds.left}px`);card.style.setProperty('--my',`${event.clientY-bounds.top}px`);}));
+$('#closeModal').addEventListener('click',closeModal);$('#modalAction').addEventListener('click',closeModal);$('#modal').addEventListener('click',event=>{if(event.target.id==='modal')closeModal();});
+$('#soundBtn').addEventListener('click',event=>{state.sound=!state.sound;event.currentTarget.textContent=state.sound?'♪':'×';toast(state.sound?'Sons ativados':'Sons desativados');});
+$('#shareLatestBtn').addEventListener('click',()=>window.LexoraPvp?.shareLatest());
+document.addEventListener('keydown',event=>{if(event.key==='Escape')closeModal();});
+
+window.LexoraUI={toast,modal,showLobby,navigate,renderProfile,getLanguage:()=>state.language,getPlayConfig:()=>({language:state.language,matchType:state.matchType,bestOf:state.bestOf}),soundEnabled:()=>state.sound,reloadData:()=>Promise.all([loadRankings(),loadChallenges(),loadTournaments()])};
+void Promise.all([loadRankings(),loadChallenges(),loadTournaments()]);

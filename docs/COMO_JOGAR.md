@@ -1,61 +1,38 @@
 # Como jogar
 
-## Lexora Duelo
+## Quarteto
 
-Escolha Termo, Anagrama ou Quarteto e clique em **Duelo**. A fila só conecta jogadores reais que escolheram o mesmo modo e idioma. Os dois recebem o mesmo conteúdo e começam após a contagem regressiva do servidor.
+Os dois jogadores recebem quatro palavras secretas idênticas e têm 120 segundos. Cada tentativa de cinco letras é validada no servidor e aplicada aos quatro painéis.
 
-Cada duelo custa dois créditos virtuais. O vencedor recebe o pote de quatro créditos; em empate, cada entrada é devolvida. Esses créditos não possuem valor monetário.
+Ordem de decisão:
 
-## Escolha do idioma
+1. mais palavras resolvidas;
+2. menor tempo;
+3. menos tentativas;
+4. regra determinística vinculada ao compromisso da partida.
 
-Antes de entrar em uma arena, selecione Português, English ou Misto. A escolha fica salva neste navegador. O contador abaixo dos botões mostra o tamanho real do estoque disponível para aquele idioma.
-
-## Quarteto Masters
-
-- Objetivo: descobrir quatro palavras de cinco letras ao mesmo tempo.
-- Limite: nove tentativas.
-- Cada chute é aplicado aos quatro tabuleiros.
-- Verde: letra correta na posição correta.
-- Amarelo: letra existente em outra posição.
-- Cinza: letra ausente ou ocorrência excedente.
-- A rodada termina quando as quatro palavras são descobertas ou as tentativas acabam.
-
-O tratamento de letras repetidas considera a quantidade real de cada letra na resposta.
+O rival vê apenas quantas palavras você resolveu. Ele nunca recebe suas letras ou tentativas.
 
 ## Contexto
 
-- Objetivo: encontrar a palavra secreta pela proximidade de significado.
-- Limite: 30 tentativas.
-- Uma posição menor indica maior proximidade; posição `#1` vence a rodada.
-- A mesma palavra não pode ser enviada duas vezes na mesma partida.
-- As cores ajudam a identificar tentativas quentes, próximas, moderadas ou frias.
+Os dois jogadores recebem a mesma palavra secreta, o mesmo provedor semântico e 30 tentativas. Uma posição menor indica maior proximidade. A mesma palavra não pode ser enviada duas vezes.
 
-O catálogo do Contexto é semântico e separado do dicionário ortográfico usado nos jogos de cinco letras.
+Ordem de decisão:
 
-## Termo Blitz
+1. quem descobrir primeiro;
+2. menor tempo;
+3. menos tentativas;
+4. se ninguém descobrir, melhor posição;
+5. menos tentativas;
+6. regra determinística.
 
-- Objetivo: descobrir uma palavra de cinco letras.
-- Limite: seis tentativas.
-- Verde, amarelo e cinza seguem as mesmas regras do Quarteto.
-- Quanto menos tentativas forem usadas, maior será a pontuação.
+O rival vê apenas a melhor posição na corrida, nunca a palavra digitada.
 
-## Anagrama Rush
+## Estados
 
-- Objetivo: formar o máximo de palavras usando as seis letras disponíveis.
-- Duração: 90 segundos.
-- Cada letra pode ser usada somente na quantidade apresentada.
-- As palavras precisam ter no mínimo três letras.
-- A mesma palavra não pontua duas vezes.
-- Palavras maiores valem mais pontos.
+- Casual: grátis e sem alteração de rating.
+- Ranked: grátis e altera o rating do jogo.
+- Premiado: R$ 2, R$ 5 ou R$ 10, somente quando o gate financeiro estiver integralmente habilitado.
+- Torneio: regras e seed controladas pelo servidor.
 
-## Competição e não repetição
-
-Cada nova partida recebe uma sessão própria. As respostas não ficam no HTML nem são enviadas no início da rodada. Uma resposta sorteada é retirada do estoque global daquele dia, evitando que outro jogador ou uma nova tentativa receba o mesmo conteúdo.
-
-O dia de alocação segue UTC. Se o estoque de um modo acabar, o servidor informa o esgotamento e não recicla respostas.
-
-## Resultado e revanche
-
-A tela final mostra os dois placares, ações, tempo, sequência e o motivo real da diferença. A revanche só acontece quando os dois jogadores aceitam e mantém a entrada de dois créditos demo.
-
-O botão de compartilhamento copia apenas o resultado e nunca revela a resposta antes de a sala terminar.
+Use **Melhor de 3** para uma série até duas vitórias. Revanche sempre cria uma nova seed.

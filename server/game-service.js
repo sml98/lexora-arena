@@ -4,7 +4,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { evaluateWordGuess } from '../scripts/quarteto-engine.js';
 import { ALL_PORTUGUESE_WORDS } from '../scripts/words.js';
-import { PT_BR_WORDS, EN_US_WORDS, PT_BR_ANAGRAM_WORDS, EN_US_ANAGRAM_WORDS, DICTIONARY_META } from './dictionaries.generated.js';
+import { PT_BR_WORDS, EN_US_WORDS, DICTIONARY_META } from './dictionaries.generated.js';
+import { semanticProvider } from './semantic-provider.js';
 
 const sessions = new Map();
 const DAY_MS = 86_400_000;
@@ -88,18 +89,13 @@ const CONTEXTO_PT=makeContext(GROUPS),CONTEXTO_EN=makeContext(EN_GROUPS);
 const WORD_POOL_PT=[...new Set([...ALL_PORTUGUESE_WORDS,...PT_BR_WORDS])].filter(word=>/^[A-Z]{5}$/.test(word));
 const WORD_POOL_EN=EN_US_WORDS;
 const WORD_POOL=[...new Set([...WORD_POOL_PT,...WORD_POOL_EN])];
-const ANAGRAM_WORD_POOL_PT=[...new Set([...ALL_PORTUGUESE_WORDS,...PT_BR_ANAGRAM_WORDS])];
-const ANAGRAM_WORD_POOL_EN=EN_US_ANAGRAM_WORDS;
-const ANAGRAM_WORD_POOL=[...new Set([...ANAGRAM_WORD_POOL_PT,...ANAGRAM_WORD_POOL_EN])];
-const VOWELS='AEIOU';
-const ANAGRAMAS=[...new Map(WORD_POOL.map(base=>{const extra=VOWELS[hashInt(base)%VOWELS.length],letters=[...base,extra].sort().join('');return [letters,{key:letters,letters,base}];})).values()];
 function languagePools(language){
-  if(language==='pt')return {words:WORD_POOL_PT,anagramWords:ANAGRAM_WORD_POOL_PT,contexts:CONTEXTO_PT};
-  if(language==='en')return {words:WORD_POOL_EN,anagramWords:ANAGRAM_WORD_POOL_EN,contexts:CONTEXTO_EN};
-  return {words:WORD_POOL,anagramWords:ANAGRAM_WORD_POOL,contexts:[...CONTEXTO_PT,...CONTEXTO_EN]};
+  if(language==='pt')return {words:WORD_POOL_PT,contexts:CONTEXTO_PT};
+  if(language==='en')return {words:WORD_POOL_EN,contexts:CONTEXTO_EN};
+  return {words:WORD_POOL,contexts:[...CONTEXTO_PT,...CONTEXTO_EN]};
 }
 
-function emptyLedger(){return {dayId:dayId(),words:[],contexts:[],anagrams:[]};}
+function emptyLedger(){return {dayId:dayId(),words:[],contexts:[]};}
 function loadLedger(){try{const data=JSON.parse(readFileSync(LEDGER_FILE,'utf8'));return data.dayId===dayId()?data:emptyLedger();}catch{return emptyLedger();}}
 let ledger=loadLedger();
 function persistLedger(){mkdirSync(DATA_DIR,{recursive:true});const tmp=`${LEDGER_FILE}.tmp`;writeFileSync(tmp,JSON.stringify(ledger,null,2));renameSync(tmp,LEDGER_FILE);}
@@ -110,53 +106,35 @@ function allocate(kind,candidates,count,getId=value=>value){
   if(available.length<count)throw new Error(`Conteúdo diário esgotado para este modo. Nenhuma resposta será repetida; tente novamente amanhã.`);
   const selected=available.slice(0,count);ledger[kind].push(...selected.map(getId));persistLedger();return selected;
 }
-function canSpell(word,letters){const stock=countLetters(letters),need=countLetters(word);return Object.entries(need).every(([letter,total])=>(stock[letter]||0)>=total);}
-
-function createAnagramChallenge(pools){
-  const poolSet=new Set(pools.words);
-  const selected=allocate('anagrams',ANAGRAMAS.filter(item=>poolSet.has(item.base)),1,item=>item.key)[0];
-  return {letters:selected.letters,words:pools.anagramWords.filter(word=>canSpell(word,selected.letters)).slice(0,120)};
-}
-
 export function createSharedChallenge(mode,language='mixed'){
-  if(!['quarteto','termo','anagrama'].includes(mode))throw new Error('Este modo não está disponível para duelos.');
+  if(!['quarteto','contexto'].includes(mode))throw new Error('Este modo não está disponível na arena competitiva.');
   const safeLanguage=['pt','en','mixed'].includes(language)?language:'mixed';
   const pools=languagePools(safeLanguage);
   if(mode==='quarteto'){
     const secrets=allocate('words',pools.words,4);
     return {mode,language:safeLanguage,sessionOptions:{secrets},public:{boards:4,maxAttempts:9}};
   }
-  if(mode==='termo'){
-    const secret=allocate('words',pools.words,1)[0];
-    return {mode,language:safeLanguage,sessionOptions:{secret},public:{wordLength:5,maxAttempts:6}};
-  }
-  const challenge=createAnagramChallenge(pools);
-  return {mode,language:safeLanguage,sessionOptions:{challenge,duration:60},public:{letters:[...challenge.letters],duration:60}};
+  const challenge=allocate('contexts',pools.contexts,1,item=>item.secret)[0];
+  return {mode,language:safeLanguage,sessionOptions:{challenge},public:{maxAttempts:30,semanticProvider:semanticProvider.getMetadata()}};
 }
 
 export function createGameSession(mode, options={}) {
-  if (!['quarteto','contexto','termo','anagrama'].includes(mode)) throw new Error('Modo de jogo inválido.');
+  if (!['quarteto','contexto'].includes(mode)) throw new Error('Modo de jogo inválido. Escolha Quarteto ou Contexto.');
   const id=randomUUID();
   const language=['pt','en','mixed'].includes(options.language)?options.language:'mixed';
   const pools=languagePools(language);
-  const nonce=options.nonce || randomUUID();
-  const seed=`${dayId()}:${mode}:${nonce}`;
   const session={ id, mode, language, dayId:dayId(), createdAt:Date.now(), expiresAt:Date.now()+DAY_MS, attempts:0, used:new Set(), score:0, finished:false };
   if(mode==='quarteto') Object.assign(session,{ secrets:options.secrets || allocate('words',pools.words,4), solved:[false,false,false,false], maxAttempts:9 });
-  if(mode==='termo') Object.assign(session,{ secret:options.secret || allocate('words',pools.words,1)[0], maxAttempts:6 });
   if(mode==='contexto') Object.assign(session,{ challenge:options.challenge || allocate('contexts',pools.contexts,1,item=>item.secret)[0], maxAttempts:30, bestRank:9999 });
-  if(mode==='anagrama') { const duration=options.duration??90;const challenge=options.challenge||createAnagramChallenge(pools);Object.assign(session,{ challenge, duration, deadline:Date.now()+duration*1000 }); }
   sessions.set(id,session);
   return publicStart(session);
 }
 
 function publicStart(s) {
   const pools=languagePools(s.language);
-  const base={sessionId:s.id,mode:s.mode,language:s.language,dayId:s.dayId,roundId:s.id.slice(0,8),expiresAt:s.expiresAt,dictionaries:DICTIONARY_META.counts,stock:{fiveLetters:pools.words.length,anagramWords:pools.anagramWords.length,contexts:pools.contexts.length}};
+  const base={sessionId:s.id,mode:s.mode,language:s.language,dayId:s.dayId,roundId:s.id.slice(0,8),expiresAt:s.expiresAt,dictionaries:DICTIONARY_META.counts,stock:{fiveLetters:pools.words.length,contexts:pools.contexts.length}};
   if(s.mode==='quarteto') return {...base,boards:4,maxAttempts:s.maxAttempts};
-  if(s.mode==='termo') return {...base,wordLength:5,maxAttempts:s.maxAttempts};
-  if(s.mode==='contexto') return {...base,maxAttempts:s.maxAttempts};
-  return {...base,letters:[...s.challenge.letters].sort(()=>Math.random()-.5),duration:s.duration};
+  return {...base,maxAttempts:s.maxAttempts,semanticProvider:semanticProvider.getMetadata()};
 }
 
 function getSession(id) {
@@ -178,9 +156,7 @@ export function submitGameGuess(sessionId, rawGuess) {
   const s=getSession(sessionId);
   if(s.finished) throw new Error('A partida já terminou.');
   if(s.mode==='quarteto') return guessQuarteto(s,rawGuess);
-  if(s.mode==='termo') return guessTermo(s,rawGuess);
-  if(s.mode==='contexto') return guessContexto(s,rawGuess);
-  return guessAnagrama(s,rawGuess);
+  return guessContexto(s,rawGuess);
 }
 
 function guessQuarteto(s,raw) {
@@ -196,47 +172,25 @@ function guessQuarteto(s,raw) {
   return {guess,attempts:s.attempts,boards,solved:s.solved,score:s.score,finished:s.finished,win,answers:s.finished?s.secrets:undefined};
 }
 
-function guessTermo(s,raw) {
-  const guess=validateGuess(s,raw,{five:true}); s.attempts++;
-  const tiles=evaluateWordGuess(guess,s.secret); const win=guess===s.secret;
-  s.finished=win||s.attempts>=s.maxAttempts; s.score=win?Math.max(1000,7000-s.attempts*650):0;
-  return {guess,tiles,attempts:s.attempts,score:s.score,finished:s.finished,win,answer:s.finished?s.secret:undefined};
-}
-
 function guessContexto(s,raw) {
   const guess=validateGuess(s,raw); s.attempts++;
-  const c=s.challenge; let rank;
-  if(guess===c.secret) rank=1;
-  else { const near=c.near.indexOf(guess),warm=c.warm.indexOf(guess); rank=near>=0?2+near*4:warm>=0?50+warm*55:400+hashInt(`${c.secret}:${guess}`)%9400; }
+  const c=s.challenge;const rank=semanticProvider.getRank(c.secret,guess,c);
   s.bestRank=Math.min(s.bestRank,rank); const win=rank===1;
   s.finished=win||s.attempts>=s.maxAttempts; s.score=Math.max(0,11000-s.bestRank-s.attempts*45);
   const temperature=rank<=10?'hot':rank<=100?'warm':rank<=1000?'mild':'cold';
   return {guess,rank,bestRank:s.bestRank,temperature,attempts:s.attempts,score:s.score,finished:s.finished,win,answer:s.finished?c.secret:undefined};
 }
 
-function countLetters(word){return [...word].reduce((m,l)=>(m[l]=(m[l]||0)+1,m),{});}
-function guessAnagrama(s,raw) {
-  if(Date.now()>=s.deadline){s.finished=true;throw new Error('O tempo desta rodada terminou.');}
-  const guess=validateGuess(s,raw); const available=countLetters(s.challenge.letters); const used=countLetters(guess);
-  if(guess.length<3){s.used.delete(guess);throw new Error('Forme uma palavra com pelo menos 3 letras.');}
-  if(Object.entries(used).some(([l,n])=>(available[l]||0)<n)){s.used.delete(guess);throw new Error('Use somente as letras disponíveis.');}
-  if(!s.challenge.words.includes(guess)){s.used.delete(guess);throw new Error('Palavra não reconhecida nesta rodada.');}
-  s.attempts++; const points=guess.length*guess.length*10; s.score+=points;
-  return {guess,points,score:s.score,found:s.attempts,total:s.challenge.words.length,finished:false};
-}
-
 export function finishGameSession(sessionId) {
   const s=getSession(sessionId);
-  if(s.mode!=='anagrama') throw new Error('Finalização manual indisponível para este modo.');
-  if(Date.now()<s.deadline) throw new Error('O cronômetro ainda está em andamento.');
   s.finished=true;
-  return {finished:true,score:s.score,answer:s.challenge.words};
+  return {finished:true,score:s.score};
 }
 
 export function clearSessions(){ sessions.clear(); }
 export function resetDailyAllocations(){ledger=emptyLedger();persistLedger();}
-export function getDailyAllocationStats(){ensureDay();return {dayId:ledger.dayId,words:new Set(ledger.words).size,contexts:new Set(ledger.contexts).size,anagrams:new Set(ledger.anagrams).size};}
+export function getDailyAllocationStats(){ensureDay();return {dayId:ledger.dayId,words:new Set(ledger.words).size,contexts:new Set(ledger.contexts).size};}
 export function getDictionaryCatalog(){
-  const describe=language=>{const pools=languagePools(language);return {fiveLetters:pools.words.length,anagramWords:pools.anagramWords.length,contexts:pools.contexts.length};};
-  return {verified:DICTIONARY_META.verified,sources:DICTIONARY_META.sources,languages:{pt:describe('pt'),en:describe('en'),mixed:describe('mixed')}};
+  const describe=language=>{const pools=languagePools(language);return {fiveLetters:pools.words.length,contexts:pools.contexts.length};};
+  return {verified:DICTIONARY_META.verified,sources:DICTIONARY_META.sources,semanticProvider:semanticProvider.getMetadata(),languages:{pt:describe('pt'),en:describe('en'),mixed:describe('mixed')}};
 }

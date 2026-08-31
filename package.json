@@ -1,17 +1,25 @@
 {
   "name": "lexora-arena",
-  "version": "3.0.0",
+  "version": "5.0.0",
   "type": "module",
   "private": true,
   "scripts": {
     "start": "node server/server.js",
     "start:lan": "node server/server.js --host 0.0.0.0",
-    "test": "node --test"
+    "test": "node --test",
+    "lint": "find server scripts tools tests -type f \\( -name '*.js' -o -name '*.mjs' \\) -exec node --check {} \\;",
+    "build": "npm run lint",
+    "migrate": "node tools/migrate.mjs",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "check": "npm run lint && npm test && npm audit"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
+    "pg": "^8.23.0",
+    "redis": "^6.2.1",
     "ws": "^8.21.3"
   }
 }

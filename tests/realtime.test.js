@@ -20,7 +20,7 @@ test('WebSocket conecta dois jogadores, faz matchmaking e permite reconexão sem
   const clients=[];t.after(async()=>{for(const client of clients)client.ws.close();app.realtime.close();await new Promise(resolve=>app.server.close(resolve));resetPlayerStore();clearPvpMatches();});
   const [ana,beto]=await Promise.all([createSession(base,'Ana'),createSession(base,'Beto')]);assert.notEqual(ana.player.id,beto.player.id);
   const first=connect(base,ana),second=connect(base,beto);clients.push(first,second);await Promise.all([once(first.ws,'open'),once(second.ws,'open')]);await Promise.all([first.inbox.waitFor('session:ready'),second.inbox.waitFor('session:ready')]);
-  first.ws.send(JSON.stringify({type:'queue:join',mode:'termo',language:'pt'}));second.ws.send(JSON.stringify({type:'queue:join',mode:'termo',language:'pt'}));
+  first.ws.send(JSON.stringify({type:'queue:join',mode:'quarteto',language:'pt',matchType:'ranked'}));second.ws.send(JSON.stringify({type:'queue:join',mode:'quarteto',language:'pt',matchType:'ranked'}));
   const [foundA,foundB]=await Promise.all([first.inbox.waitFor('match:found'),second.inbox.waitFor('match:found')]);
   assert.equal(foundA.match.id,foundB.match.id);assert.deepEqual(foundA.match.challenge,foundB.match.challenge);assert.doesNotMatch(JSON.stringify(foundA),/"secret"|"secrets"|"answer"/i);
   first.ws.close();await once(first.ws,'close');const reconnected=connect(base,ana);clients.push(reconnected);await once(reconnected.ws,'open');const restored=await reconnected.inbox.waitFor('match:reconnected');assert.equal(restored.match.id,foundA.match.id);
@@ -28,5 +28,8 @@ test('WebSocket conecta dois jogadores, faz matchmaking e permite reconexão sem
 
 test('API declara dinheiro real desativado',async t=>{
   const app=createLexoraServer();app.server.listen(0,'127.0.0.1');await once(app.server,'listening');t.after(async()=>{app.realtime.close();await new Promise(resolve=>app.server.close(resolve));});const base=`http://127.0.0.1:${app.server.address().port}`;
-  const config=await (await fetch(`${base}/api/config`)).json();assert.equal(config.realMoneyEnabled,false);assert.equal(config.creditsLabel,'Créditos demo');
+  const configResponse=await fetch(`${base}/api/config`),config=await configResponse.json();assert.equal(config.realMoneyEnabled,false);assert.deepEqual(config.modes,['quarteto','contexto']);assert.match(configResponse.headers.get('content-security-policy'),/default-src 'self'/);
+  const status=await (await fetch(`${base}/api/finance/status`)).json();assert.equal(status.enabled,false);assert.ok(status.blockers.length>0);
+  const quote=await (await fetch(`${base}/api/finance/quote?entryCents=1000`)).json();assert.equal(quote.winnerPrizeCents,1700);
+  const register=await fetch(`${base}/api/financial/auth/register`,{method:'POST',headers:{'content-type':'application/json'},body:'{}'});assert.equal(register.status,503);assert.equal((await register.json()).code,'REAL_MONEY_NOT_READY');
 });

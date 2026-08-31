@@ -11,10 +11,15 @@ test('sessão anônima recebe créditos somente no ledger do servidor',()=>{
   const entry=debitDemoCredits(session.player.id,2,{matchId:'m1'});assert.deepEqual([entry.before,entry.after],[100,98]);
 });
 
-test('Elo, provisórias, vitórias e ranking são calculados no servidor',()=>{
+test('ratings de Quarteto e Contexto são independentes',()=>{
   const first=createPlayerSession({name:'Ana'}).player,second=createPlayerSession({name:'Beto'}).player;
-  const profiles=recordRatedMatch({matchId:'m1',mode:'termo',language:'pt',playerIds:[first.id,second.id],winnerId:first.id,tie:false,results:{[first.id]:{score:100},[second.id]:{score:10}}});
-  assert.ok(profiles[first.id].rating>1000);assert.ok(profiles[second.id].rating<1000);assert.equal(profiles[first.id].wins,1);assert.equal(profiles[first.id].provisionalRemaining,4);
-  assert.equal(getRankings('all')[0].id,first.id);assert.equal('ledger' in getRankings('all')[0],false);
+  const profiles=recordRatedMatch({matchId:'m1',mode:'quarteto',matchType:'ranked',language:'pt',playerIds:[first.id,second.id],winnerId:first.id,tie:false,results:{[first.id]:{score:100,solved:4,attempts:5,elapsedMs:50000},[second.id]:{score:10,solved:2,attempts:6,elapsedMs:60000}}});
+  assert.ok(profiles[first.id].quartetoRating>1000);assert.equal(profiles[first.id].contextoRating,1000);assert.ok(profiles[second.id].quartetoRating<1000);assert.equal(profiles[first.id].wins,1);
+  assert.equal(getRankings('all',{mode:'quarteto'})[0].id,first.id);assert.equal('ledger' in getRankings('all',{mode:'quarteto'})[0],false);
 });
 
+test('partida casual registra estatísticas sem alterar rating',()=>{
+  const first=createPlayerSession({name:'Ana'}).player,second=createPlayerSession({name:'Beto'}).player;
+  const profiles=recordRatedMatch({matchId:'m2',mode:'contexto',matchType:'casual',language:'pt',playerIds:[first.id,second.id],winnerId:first.id,results:{[first.id]:{bestRank:1,discovered:true,attempts:3,elapsedMs:1000},[second.id]:{bestRank:20,attempts:4,elapsedMs:120000}}});
+  assert.equal(profiles[first.id].contextoRating,1000);assert.equal(profiles[first.id].stats.contexto.games,1);
+});

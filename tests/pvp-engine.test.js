@@ -1,47 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { activateMatch, clearPvpMatches, createMatch, finishMatch, getRematchData, getResult, requestRematch, startMatch, submitAction, validateAction } from '../server/pvp-engine.js';
+import { activateMatch, clearPvpMatches, createMatch, finishMatch, getRematchData, getResult, publicMatch, requestRematch, startMatch, submitAction, validateAction } from '../server/pvp-engine.js';
 
-const termoChallenge={mode:'termo',language:'pt',sessionOptions:{secret:'TERMO'},public:{wordLength:5,maxAttempts:6}};
-const createTermo=(ids=['p1','p2'],now=1_000)=>{const match=createMatch({playerIds:ids,mode:'termo',language:'pt',challenge:termoChallenge,countdownMs:0,createdAt:now});startMatch(match,now);activateMatch(match,now);return match;};
+const quartetoChallenge={mode:'quarteto',language:'pt',sessionOptions:{secrets:['TERMO','SAGAZ','NOBRE','IDEIA']},public:{boards:4,maxAttempts:9}};
+const contextoChallenge={mode:'contexto',language:'pt',sessionOptions:{challenge:{secret:'MUSICA',near:['SOM','RITMO'],warm:['ARTE']}},public:{maxAttempts:30}};
+function activeMatch({mode='quarteto',challenge=quartetoChallenge,ids=['p1','p2'],series=null}={}){const match=createMatch({playerIds:ids,mode,language:'pt',challenge,countdownMs:0,createdAt:1_000,series});startMatch(match,1_000);activateMatch(match,1_000);return match;}
 
 test.afterEach(clearPvpMatches);
 
-test('cria duas sessões com o mesmo desafio sem expor a palavra',()=>{
-  const match=createTermo();
-  assert.notEqual(match.players.get('p1').sessionId,match.players.get('p2').sessionId);
-  assert.deepEqual(match.challenge.public,{wordLength:5,maxAttempts:6});
-  assert.doesNotMatch(JSON.stringify(match.challenge.public),/TERMO/);
+test('cria sessões privadas com um compromisso público do mesmo desafio',()=>{
+  const match=activeMatch();assert.notEqual(match.players.get('p1').sessionId,match.players.get('p2').sessionId);assert.doesNotMatch(JSON.stringify(publicMatch(match,'p1').challenge),/TERMO|SAGAZ|NOBRE|IDEIA/);
 });
 
-test('servidor calcula vitória, derrota, tempo e frase comparativa',()=>{
-  const match=createTermo();
-  submitAction(match.id,'p1',{guess:'TERMO'},2_000);
-  for(const [index,guess] of ['IDEIA','SAGAZ','NOBRE','HOTEL','ARENA','PLANO'].entries())submitAction(match.id,'p2',{guess},3_000+index*100);
-  const winner=getResult(match.id,'p1'),loser=getResult(match.id,'p2');
-  assert.equal(winner.outcome,'win');assert.equal(loser.outcome,'loss');assert.equal(winner.winnerId,'p1');
-  assert.ok(winner.players.p1.score>winner.players.p2.score);assert.match(loser.phrase,/Você perdeu/);
+test('Quarteto decide primeiro por palavras resolvidas',()=>{
+  const match=activeMatch();submitAction(match.id,'p1',{guess:'TERMO'},2_000);submitAction(match.id,'p1',{guess:'SAGAZ'},2_200);submitAction(match.id,'p2',{guess:'TERMO'},2_000);finishMatch(match.id,'timeout',match.endAt);
+  assert.equal(getResult(match.id,'p1').outcome,'win');assert.match(getResult(match.id,'p2').phrase,/Você perdeu/);
 });
 
-test('empate real é preservado',()=>{
-  const match=createTermo();submitAction(match.id,'p1',{guess:'TERMO'},2_000);submitAction(match.id,'p2',{guess:'TERMO'},2_000);
-  assert.equal(getResult(match.id,'p1').outcome,'draw');
+test('Contexto termina quando o primeiro jogador descobre o alvo',()=>{
+  const match=activeMatch({mode:'contexto',challenge:contextoChallenge});submitAction(match.id,'p1',{guess:'SOM'},2_000);submitAction(match.id,'p2',{guess:'ARTE'},2_000);submitAction(match.id,'p1',{guess:'MUSICA'},2_200);
+  const result=getResult(match.id,'p1');assert.equal(result.outcome,'win');assert.equal(result.players.p1.bestRank,1);assert.equal(result.answers[0],'MUSICA');
 });
 
-test('timeout e abandono são decididos no servidor',()=>{
-  const timeout=createTermo(['a','b']);finishMatch(timeout.id,'timeout',timeout.endAt);assert.equal(getResult(timeout.id,'a').finishReason,'timeout');clearPvpMatches();
-  const abandoned=createTermo(['a','b']);finishMatch(abandoned.id,'abandonment',2_000,{abandonedPlayerId:'a'});assert.equal(getResult(abandoned.id,'b').outcome,'win');assert.match(getResult(abandoned.id,'a').phrase,/desconectou/);
+test('estado público do rival não revela letras nem tentativas',()=>{
+  const match=activeMatch();submitAction(match.id,'p1',{guess:'TERMO'},2_000);const state=publicMatch(match,'p2');assert.deepEqual(state.progress.p1,{solved:1,total:4,status:'playing'});assert.equal('attempts'in state.progress.p1,false);assert.doesNotMatch(JSON.stringify(state),/TERMO/);
 });
 
-test('bloqueia adulteração de pontuação e conteúdo HTML',()=>{
-  const match=createTermo();
-  assert.throws(()=>validateAction(match,'p1',{guess:'TERMO',score:999999}),/controlado pelo servidor/);
-  assert.throws(()=>submitAction(match.id,'p1',{guess:'<script>alert(1)<\/script>'},2_000),/caracteres não permitidos/);
-  finishMatch(match.id,'timeout',match.endAt);assert.equal(getResult(match.id,'p1').players.p1.errors,1);assert.match(getResult(match.id,'p1').players.p1.principalError,/caracteres/);
+test('abandono e falha de servidor são decididos no backend',()=>{
+  const abandoned=activeMatch({ids:['a','b']});finishMatch(abandoned.id,'abandonment',2_000,{abandonedPlayerId:'a'});assert.equal(getResult(abandoned.id,'b').outcome,'win');clearPvpMatches();
+  const cancelled=activeMatch({ids:['a','b']});finishMatch(cancelled.id,'server_failure',2_000);assert.equal(getResult(cancelled.id,'a').outcome,'draw');
 });
 
-test('revanche exige aceite dos dois jogadores e mantém a mesma entrada',()=>{
-  const match=createTermo();finishMatch(match.id,'timeout',match.endAt);
-  assert.equal(requestRematch(match.id,'p1').ready,false);assert.equal(requestRematch(match.id,'p2').ready,true);
-  assert.equal(getRematchData(match.id).entryCredits,2);
+test('bloqueia adulteração de placar e conteúdo HTML',()=>{
+  const match=activeMatch();assert.throws(()=>validateAction(match,'p1',{guess:'TERMO',score:999999}),/controlado pelo servidor/);assert.throws(()=>submitAction(match.id,'p1',{guess:'<script>'},2_000),/caracteres não permitidos/);
+});
+
+test('revanche exige os dois aceites e BO3 preserva a série',()=>{
+  const match=activeMatch({series:{bestOf:3,wins:{p1:0,p2:0},gameNumber:1}});finishMatch(match.id,'timeout',match.endAt);assert.equal(requestRematch(match.id,'p1').ready,false);assert.equal(requestRematch(match.id,'p2').ready,true);const data=getRematchData(match.id);assert.equal(data.series.bestOf,3);assert.equal(data.series.gameNumber,2);
 });
