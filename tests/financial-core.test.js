@@ -5,12 +5,15 @@ import { calculateDuelMoney, calculateTournamentMoney } from '../server/financia
 
 test('duelo exibe entrada, pote, comissão e prêmio em centavos',()=>{
   assert.deepEqual(calculateDuelMoney(500,15),{entryCents:500,grossPotCents:1000,commissionPercent:15,commissionCents:150,winnerPrizeCents:850});
+  assert.deepEqual(calculateDuelMoney(1000,15),{entryCents:1000,grossPotCents:2000,commissionPercent:15,commissionCents:300,winnerPrizeCents:1700});
 });
 
 test('torneio distribui integralmente o pote líquido sem arredondamento perdido',()=>{
   const result=calculateTournamentMoney({size:8,entryCents:2000,commissionPercent:20,distribution:{first:50,second:30,third:20}});
   assert.equal(result.grossPotCents,16000);assert.equal(result.commissionCents,3200);assert.equal(result.prizePoolCents,12800);assert.deepEqual(result.prizes,{first:6400,second:3840,third:2560});assert.equal(Object.values(result.prizes).reduce((sum,value)=>sum+value,0),result.prizePoolCents);
 });
+
+test('Sprint de 32 jogadores calcula GMV, fee e pódio 55/30/15',()=>{const result=calculateTournamentMoney({size:32,entryCents:1000,commissionPercent:15,distribution:{first:55,second:30,third:15}});assert.equal(result.grossPotCents,32000);assert.equal(result.commissionCents,4800);assert.equal(result.prizePoolCents,27200);assert.deepEqual(result.prizes,{first:14960,second:8160,third:4080});});
 
 test('gate financeiro só abre quando todos os requisitos estão presentes',()=>{
   const complete={requested:true,legalReviewStatus:'approved',paymentProvider:'efi',paymentProviderConfigured:true,webhookSecretConfigured:true,kycProvider:'provedor-contratado',kycProviderConfigured:true,kycProviderAdapterReady:true,databaseUrlConfigured:true,redisUrlConfigured:true,sessionSecretConfigured:true,encryptionKeyConfigured:true,providerCredentialsConfigured:true,webhookVerificationConfigured:true,adminCredentialsConfigured:true};

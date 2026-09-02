@@ -68,7 +68,8 @@ Se uma delas faltar, depósitos, cadastro financeiro, filas pagas, torneios fina
 
 - escolha e implementação do adaptador KYC real;
 - envio de e-mail/SMS e recibos por fornecedor real;
-- painel administrativo visual com autenticação forte e RBAC (a API atual usa token técnico);
+- autenticação administrativa forte com RBAC e segundo fator (o painel visual atual usa token técnico por sessão);
+- adaptador PostgreSQL para tornar desafios assíncronos gratuitos duráveis entre reinícios (a migration e os campos cifrados já estão preparados);
 - orquestração automática de todos os confrontos da chave financeira;
 - modo espectador por replay público anonimizado;
 - implantação, WAF, cofre de segredos, observabilidade externa e testes de carga;

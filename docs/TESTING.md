@@ -5,7 +5,19 @@
 ```bash
 npm test
 npm audit
+npm run check
 ```
+
+`check` executa sintaxe/build, testes e auditoria. A base atual é JavaScript ESM; não existe uma compilação TypeScript aplicável.
+
+## Assíncrono
+
+1. Crie um desafio e conclua a rodada como primeiro jogador.
+2. Em uma janela anônima, aceite o item listado.
+3. Confirme que o placar do primeiro permanece oculto.
+4. Conclua a segunda rodada e verifique comparação, rating e prova.
+5. Recarregue durante a rodada e valide a retomada.
+6. Nos testes automatizados, valide também expiração e ausência de adversário fictício.
 
 ## Desktop com dois jogadores
 

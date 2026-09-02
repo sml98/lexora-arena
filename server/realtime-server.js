@@ -72,7 +72,7 @@ export function createRealtimeService(httpServer){
     const entryCents=financial?Number.parseInt(message.entryCents,10):0;
     const matchType=financial?'rewarded':['casual','ranked'].includes(message.matchType)?message.matchType:'ranked';
     const bestOf=message.bestOf===3?3:1;
-    if(financial){if(!REAL_MONEY_ENABLED)throw new Error('Partidas premiadas estão bloqueadas neste ambiente.');if(!getFinancialUserId(playerId))throw new Error('Vincule uma identidade financeira verificada.');if(!CONFIG.ALLOWED_ENTRY_CENTS.includes(entryCents)||entryCents===0)throw new Error('Escolha uma entrada de R$ 2, R$ 5 ou R$ 10.');}
+    if(financial){if(!REAL_MONEY_ENABLED)throw new Error('Partidas premiadas estão bloqueadas neste ambiente.');if(!getFinancialUserId(playerId))throw new Error('Vincule uma identidade financeira verificada.');if(!CONFIG.ALLOWED_ENTRY_CENTS.includes(entryCents)||entryCents===0)throw new Error('Escolha uma entrada de R$ 5, R$ 10 ou R$ 20.');}
     const profile=getPublicPlayer(playerId),rating=profile?.ratings?.[mode]||CONFIG.RATING_INITIAL,key=`${mode}:${language}:${matchType}:${entryCents}:${bestOf}`,queue=queues.get(key)||[];
     queue.push({playerId,rating,joinedAt:Date.now()});queues.set(key,queue);queuedPlayers.add(playerId);
     safeSend(sockets.get(playerId),'queue:joined',{mode,language,matchType,financial,entryCents,bestOf,position:queue.length});await matchQueue(key);
@@ -131,7 +131,7 @@ export function createRealtimeService(httpServer){
     const match=finishMatch(matchId,reason,Date.now(),details);const timers=matchTimers.get(match.id);if(timers){clearTimeout(timers.startTimer);clearTimeout(timers.endTimer);matchTimers.delete(match.id);}
     if(!match.recorded){match.recorded=true;
       const results=Object.fromEntries(match.playerIds.map(id=>[id,getResult(match.id,id).players[id]]));
-      const profiles=recordRatedMatch({matchId:match.id,mode:match.mode,matchType:match.matchType,language:match.language,playerIds:match.playerIds,winnerId:match.winnerId,tie:match.tie,results});
+      const profiles=recordRatedMatch({matchId:match.id,mode:match.mode,matchType:match.matchType,language:match.language,playerIds:match.playerIds,winnerId:match.winnerId,tie:match.tie,results,entryCents:match.financial?.entryCents||0,prizeCents:match.financial?.winnerPrizeCents||0});
       match.fraudReview=analyzeMatch(match);
       if(match.financial){
         match.financial.settlementStatus='processing';
@@ -159,7 +159,7 @@ export function createRealtimeService(httpServer){
 
   function createInvite(playerId,message){
     if(getMatchByPlayer(playerId)||queuedPlayers.has(playerId))throw new Error('Saia da fila ou partida antes de criar um convite.');
-    const challenge=createChallenge(playerId,{mode:message.mode,language:message.language,matchType:message.matchType,bestOf:message.bestOf,open:true});safeSend(sockets.get(playerId),'friend:created',challenge);
+    const challenge=createChallenge(playerId,{mode:message.mode,language:message.language,matchType:message.matchType,bestOf:message.bestOf,targetId:message.targetId||null,open:!message.targetId});safeSend(sockets.get(playerId),'friend:created',challenge);
   }
 
   async function joinInvite(playerId,code){

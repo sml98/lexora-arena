@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPlayerSession, debitDemoCredits, getRankings, recordRatedMatch, resetPlayerStore } from '../server/player-store.js';
+import { createPlayerSession, debitDemoCredits, getBusinessMetrics, getRankings, getRivalry, recordRatedMatch, resetPlayerStore } from '../server/player-store.js';
 import { REAL_MONEY_ENABLED } from '../server/config.js';
 
 test.afterEach(resetPlayerStore);
@@ -23,3 +23,5 @@ test('partida casual registra estatísticas sem alterar rating',()=>{
   const profiles=recordRatedMatch({matchId:'m2',mode:'contexto',matchType:'casual',language:'pt',playerIds:[first.id,second.id],winnerId:first.id,results:{[first.id]:{bestRank:1,discovered:true,attempts:3,elapsedMs:1000},[second.id]:{bestRank:20,attempts:4,elapsedMs:120000}}});
   assert.equal(profiles[first.id].contextoRating,1000);assert.equal(profiles[first.id].stats.contexto.games,1);
 });
+
+test('histórico registra rivalidade, valores e métricas de negócio sem float',()=>{const first=createPlayerSession({name:'Ana'}).player,second=createPlayerSession({name:'Beto'}).player;recordRatedMatch({matchId:'paid-1',mode:'quarteto',matchType:'rewarded',language:'pt',playerIds:[first.id,second.id],winnerId:first.id,entryCents:1000,prizeCents:1700,results:{[first.id]:{solved:4,attempts:5,elapsedMs:50000},[second.id]:{solved:3,attempts:6,elapsedMs:60000}}});const rivalry=getRivalry(first.id,second.id);assert.deepEqual([rivalry.total,rivalry.wins,rivalry.losses],[1,1,0]);const metrics=getBusinessMetrics();assert.equal(metrics.paidMatches,1);assert.equal(metrics.periods.today.gmvCents,2000);assert.equal(metrics.periods.today.platformRevenueCents,300);});

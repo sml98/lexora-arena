@@ -172,7 +172,7 @@ function addFinancialPlay(content, dialog) {
   const entry = element('select');
   const button = element('button', 'primary', 'Ver composição e confirmar');
   for (const [value,label] of [['quarteto','Quarteto'],['contexto','Contexto']]) { const option=element('option','',label); option.value=value; mode.append(option); }
-  for (const cents of [200,500,1000]) { const option=element('option','',money(cents)); option.value=String(cents); entry.append(option); }
+  for (const cents of [500,1000,2000]) { const option=element('option','',`${money(cents)}${cents===1000?' — mais jogado':''}`); option.value=String(cents); entry.append(option); }
   button.addEventListener('click', async () => {
     try {
       const quote = await api(`/api/finance/quote?entryCents=${entry.value}`, { auth: false });

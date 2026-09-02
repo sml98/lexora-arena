@@ -12,15 +12,22 @@ const dateKey=value=>String(value||nowIso()).slice(0,10);
 function publicProfile(player){
   const quartetoRating=player.ratings.quarteto,contextoRating=player.ratings.contexto;
   return {
-    id:player.id,name:player.name,bio:player.bio,quartetoRating,contextoRating,ratings:{...player.ratings},
+    id:player.id,name:player.name,bio:player.bio,quartetoRating,contextoRating,contextRating:contextoRating,ratings:{...player.ratings},
     divisions:{quarteto:ratingService.division(quartetoRating),contexto:ratingService.division(contextoRating)},
     rating:quartetoRating,level:player.level,
     provisionalRemaining:Math.max(0,CONFIG.PROVISIONAL_MATCHES-player.games),
     games:player.games,wins:player.wins,losses:player.losses,draws:player.draws,
     winStreak:player.winStreak,bestWinStreak:player.bestWinStreak,
     credits:player.credits,online:player.online,city:player.city,state:player.state,financialIdentityLinked:Boolean(player.financialUserId),stats:structuredClone(player.stats),
-    recentRivals:[...player.recentRivals],history:player.history.slice(0,20),ledger:player.ledger.slice(0,30)
+    recentRivals:[...player.recentRivals],rivalries:[...player.recentRivals].map(rivalId=>rivalrySnapshot(player,rivalId)).filter(Boolean),history:player.history.slice(0,20),ledger:player.ledger.slice(0,30)
   };
+}
+
+function rivalrySnapshot(player,rivalId){
+  const rival=players.get(rivalId);if(!rival)return null;
+  const meetings=player.history.filter(item=>item.opponentId===rivalId),byMode={};
+  for(const mode of ['quarteto','contexto']){const rows=meetings.filter(item=>item.mode===mode);byMode[mode]={games:rows.length,wins:rows.filter(item=>item.result==='win').length,losses:rows.filter(item=>item.result==='loss').length,draws:rows.filter(item=>item.result==='draw').length};}
+  return {rivalId,rivalName:rival.name,total:meetings.length,wins:meetings.filter(item=>item.result==='win').length,losses:meetings.filter(item=>item.result==='loss').length,draws:meetings.filter(item=>item.result==='draw').length,lastWinnerId:meetings[0]?.result==='draw'?null:meetings[0]?.result==='win'?player.id:rivalId,lastPlayedAt:meetings[0]?.endedAt||null,byMode};
 }
 
 function addLedger(player,{type,amount,matchId=null,tournamentId=null,description=''}){
@@ -82,7 +89,7 @@ export function creditDemoCredits(playerId,amount,details={}){
   return addLedger(player,{...details,type:details.type||'prize',amount:Math.abs(amount)});
 }
 
-export function recordRatedMatch({matchId,mode,language,matchType='ranked',playerIds,winnerId=null,tie=false,results,endedAt=nowIso()}){
+export function recordRatedMatch({matchId,mode,language,matchType='ranked',playerIds,winnerId=null,tie=false,results,entryCents=0,prizeCents=0,endedAt=nowIso()}){
   const [first,second]=playerIds.map(id=>players.get(id));
   if(!first||!second)throw new Error('Jogadores da partida não encontrados.');
   const firstScore=tie ? .5 : winnerId===first.id ? 1 : 0;
@@ -91,7 +98,7 @@ export function recordRatedMatch({matchId,mode,language,matchType='ranked',playe
   const firstDelta=rated?ratingService.calculate({rating:first.ratings[mode],opponentRating:second.ratings[mode],outcome:tie?'draw':winnerId===first.id?'win':'loss'}):0;
   const secondDelta=-firstDelta;
   for(const [player,opponent,score,delta] of [[first,second,firstScore,firstDelta],[second,first,secondScore,secondDelta]]){
-    if(rated)player.ratings[mode]=Math.max(100,player.ratings[mode]+delta);player.games++;
+    const ratingBefore=player.ratings[mode];if(rated)player.ratings[mode]=Math.max(100,player.ratings[mode]+delta);player.games++;
     if(score===1){player.wins++;player.winStreak++;player.bestWinStreak=Math.max(player.bestWinStreak,player.winStreak);}
     else if(score===0){player.losses++;player.winStreak=0;}else{player.draws++;player.winStreak=0;}
     const modeStats=player.stats[mode];modeStats.games++;modeStats.totalAttempts+=results[player.id]?.attempts||0;modeStats.totalElapsedMs+=results[player.id]?.elapsedMs||0;
@@ -100,10 +107,22 @@ export function recordRatedMatch({matchId,mode,language,matchType='ranked',playe
     else{modeStats.totalBestRank+=results[player.id]?.bestRank||9999;if(results[player.id]?.discovered)modeStats.discovered++;}
     player.level=1+Math.floor(player.games/5);player.recentRivals.delete(opponent.id);player.recentRivals.add(opponent.id);
     while(player.recentRivals.size>8)player.recentRivals.delete(player.recentRivals.values().next().value);
-    player.history.unshift({matchId,mode,matchType,language,opponentId:opponent.id,opponentName:opponent.name,result:score===1?'win':score===0?'loss':'draw',ratingDelta:delta,score:results[player.id]?.score||0,summary:{solved:results[player.id]?.solved,bestRank:results[player.id]?.bestRank,attempts:results[player.id]?.attempts,elapsedMs:results[player.id]?.elapsedMs},endedAt});
+    player.history.unshift({matchId,mode,matchType,language,opponentId:opponent.id,opponentName:opponent.name,result:score===1?'win':score===0?'loss':'draw',ratingBefore,ratingAfter:player.ratings[mode],ratingDelta:delta,entryCents:Number(entryCents)||0,prizeCents:score===1?(Number(prizeCents)||0):0,score:results[player.id]?.score||0,summary:{solved:results[player.id]?.solved,bestRank:results[player.id]?.bestRank,attempts:results[player.id]?.attempts,elapsedMs:results[player.id]?.elapsedMs},endedAt});
     if(player.history.length>50)player.history.length=50;
   }
   return {[first.id]:publicProfile(first),[second.id]:publicProfile(second)};
+}
+
+export function getRivalry(playerId,rivalId){const player=players.get(playerId);if(!player)throw new Error('Jogador não encontrado.');const snapshot=rivalrySnapshot(player,rivalId);if(!snapshot)throw new Error('Rival não encontrado.');return snapshot;}
+
+export function getBusinessMetrics(now=Date.now()){
+  const periods={today:86_400_000,sevenDays:604_800_000,thirtyDays:2_592_000_000};
+  const allHistory=[...players.values()].flatMap(player=>player.history.map(item=>({...item,playerId:player.id}))),uniqueMatches=rows=>[...new Map(rows.map(item=>[item.matchId,item])).values()];
+  const paidAll=uniqueMatches(allHistory.filter(item=>item.entryCents>0));
+  const summarize=windowMs=>{const rows=paidAll.filter(item=>Date.parse(item.endedAt)>=now-windowMs),gmvCents=rows.reduce((sum,item)=>sum+item.entryCents*2,0);return {paidMatches:rows.length,gmvCents,platformRevenueCents:Math.floor(gmvCents*CONFIG.PLATFORM_FEE_PERCENT/100)};};
+  const payingUsers=new Set(allHistory.filter(item=>item.entryCents>0).map(item=>item.playerId));
+  const activeSince=now-86_400_000,dailyActiveUsers=[...players.values()].filter(player=>Date.parse(player.lastSeenAt)>=activeSince).length;
+  return {registeredUsers:players.size,dailyActiveUsers,payingUsers:payingUsers.size,paidMatches:paidAll.length,averagePaidMatchesPerUser:payingUsers.size?Math.round(paidAll.length/payingUsers.size*100)/100:0,averageEntryValueCents:paidAll.length?Math.round(paidAll.reduce((sum,item)=>sum+item.entryCents,0)/paidAll.length):0,periods:Object.fromEntries(Object.entries(periods).map(([name,windowMs])=>[name,summarize(windowMs)]))};
 }
 
 export function getRankings(period='all',filters={}){

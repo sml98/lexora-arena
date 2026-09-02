@@ -6,19 +6,20 @@ import { fileURLToPath } from 'node:url';
 import { createGameSession, submitGameGuess, finishGameSession, getDictionaryCatalog } from './game-service.js';
 import { CONFIG, MONEY_CONFIG, MONEY_READINESS, REAL_MONEY_ENABLED } from './config.js';
 import { checkDatabase } from './database.js';
-import { calculateDuelMoney, cancelFinancialTournament, createDeposit, createFinancialTournament, getWallet, joinFinancialTournament, listAdminTransactions, listFinancialTournaments, processPaymentWebhook, recoverInterruptedDuels, requestWithdrawal, settleFinancialTournament } from './financial-service.js';
+import { calculateDuelMoney, cancelFinancialTournament, createDeposit, createFinancialTournament, getFinancialBusinessMetrics, getWallet, joinFinancialTournament, listAdminTransactions, listFinancialTournaments, processPaymentWebhook, recoverInterruptedDuels, requestWithdrawal, settleFinancialTournament } from './financial-service.js';
 import { authenticateFinancialRequest, loginUser, registerUser, setResponsibleLimits, setSelfExclusion } from './identity-service.js';
-import { authenticatePlayer, createPlayerSession, getPlayerStoreStats, getRankings, linkFinancialIdentity, resumePlayerSession, updatePlayerName } from './player-store.js';
+import { authenticatePlayer, createPlayerSession, getBusinessMetrics, getPlayerStoreStats, getRankings, getRivalry, linkFinancialIdentity, reportPlayer, resumePlayerSession, updatePlayerName } from './player-store.js';
 import { checkRedis } from './redis.js';
 import { createRealtimeService } from './realtime-server.js';
 import { createPaymentWorker } from './payment-worker.js';
 import { metricsSnapshot, observeHttp } from './metrics.js';
 import { safeEqualHex, sha256 } from './security.js';
-import { getTournament, joinTournament, listTournaments, seedDemoTournaments } from './tournament-service.js';
+import { ensureProductTournaments, getTournament, joinTournament, listTournaments } from './tournament-service.js';
 import { createChallenge, getChallenge, listOpenChallenges } from './challenge-service.js';
 import { listFraudSignals, resolveFraudSignal } from './antifraud-service.js';
 import { listAdminActions, recordAdminAction } from './admin-service.js';
 import { getDailyRanking, startDailyChallenge, submitDailyGuess } from './daily-challenge-service.js';
+import { acceptAsyncChallenge, cancelAsyncChallenge, createAsyncChallenge, getAsyncChallenge, listAsyncChallenges, submitAsyncGuess, sweepAsyncChallenges } from './async-pvp-service.js';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const mime = { '.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml' };
@@ -26,7 +27,7 @@ const argument=name=>{const index=process.argv.indexOf(name);return index>=0?pro
 const preferred = Number.parseInt(argument('--port') || process.env.PORT || '8080', 10);
 const host = argument('--host') || process.env.HOST || '127.0.0.1';
 const rates=new Map();
-seedDemoTournaments();
+ensureProductTournaments();
 
 const securityHeaders={
   'x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'no-referrer',
@@ -60,8 +61,8 @@ async function handler(req, res) {
     if(req.method==='GET'&&url.pathname==='/api/financial/tournaments')return json(res,200,{tournaments:await listFinancialTournaments(),enabled:REAL_MONEY_ENABLED});
     if(req.method==='POST'&&url.pathname.match(/^\/api\/financial\/tournaments\/[^/]+\/join$/)){const user=await authenticateFinancialRequest(req),tournamentId=url.pathname.split('/')[4],data=await body(req),key=req.headers['idempotency-key']||data.idempotencyKey;return json(res,200,await joinFinancialTournament(user.id,tournamentId,key));}
     if(req.method==='POST'&&url.pathname==='/api/webhooks/efi/pix'){const raw=await rawBody(req,250_000);return json(res,200,await processPaymentWebhook(raw,req.headers));}
-    if(req.method==='GET'&&url.pathname==='/api/admin/transactions'){assertAdmin(req);return json(res,200,{transactions:await listAdminTransactions(url.searchParams.get('limit'))});}
-    if(req.method==='GET'&&url.pathname==='/api/admin/metrics'){assertAdmin(req);return json(res,200,metricsSnapshot({players:getPlayerStoreStats(),realtime:'available'}));}
+    if(req.method==='GET'&&url.pathname==='/api/admin/transactions'){assertAdmin(req);return json(res,200,{transactions:REAL_MONEY_ENABLED?await listAdminTransactions(url.searchParams.get('limit')):[],financialModeEnabled:REAL_MONEY_ENABLED});}
+    if(req.method==='GET'&&url.pathname==='/api/admin/metrics'){assertAdmin(req);const local=getBusinessMetrics(),financial=REAL_MONEY_ENABLED?await getFinancialBusinessMetrics():{registeredUsers:local.registeredUsers,dailyActiveUsers:local.dailyActiveUsers,payingUsers:0,deposits:0,withdrawals:0,paidMatches:0,averageEntryValueCents:0,periods:{today:{gmvCents:0,platformRevenueCents:0},sevenDays:{gmvCents:0,platformRevenueCents:0},thirtyDays:{gmvCents:0,platformRevenueCents:0}}};return json(res,200,metricsSnapshot({players:getPlayerStoreStats(),business:financial,tournaments:{total:listTournaments().length,active:listTournaments().filter(item=>item.status==='active').length},realtime:'available'}));}
     if(req.method==='POST'&&url.pathname==='/api/admin/tournaments'){assertAdmin(req);return json(res,201,{tournament:await createFinancialTournament(await body(req))});}
     if(req.method==='POST'&&url.pathname.match(/^\/api\/admin\/tournaments\/[^/]+\/cancel$/)){assertAdmin(req);const tournamentId=url.pathname.split('/')[4],data=await body(req);return json(res,200,await cancelFinancialTournament(tournamentId,data.reason,req.headers['idempotency-key']||data.idempotencyKey));}
     if(req.method==='POST'&&url.pathname.match(/^\/api\/admin\/tournaments\/[^/]+\/settle$/)){assertAdmin(req);const tournamentId=url.pathname.split('/')[4],data=await body(req);return json(res,200,await settleFinancialTournament(tournamentId,data.podium,req.headers['idempotency-key']||data.idempotencyKey));}
@@ -75,6 +76,14 @@ async function handler(req, res) {
     if(req.method==='GET'&&url.pathname==='/api/challenges')return json(res,200,{challenges:listOpenChallenges()});
     if(req.method==='GET'&&url.pathname.startsWith('/api/challenges/'))return json(res,200,{challenge:getChallenge(url.pathname.split('/').at(-1))});
     if(req.method==='POST'&&url.pathname==='/api/challenges'){const data=await body(req);authenticatePlayer(data.playerId,data.token);return json(res,201,{challenge:createChallenge(data.playerId,data)});}
+    if(req.method==='GET'&&url.pathname==='/api/async-challenges'){await sweepAsyncChallenges();return json(res,200,{challenges:listAsyncChallenges({mode:url.searchParams.get('mode')||undefined,language:url.searchParams.get('language')||undefined,matchType:url.searchParams.get('matchType')||undefined})});}
+    if(req.method==='POST'&&url.pathname==='/api/async-challenges'){const data=await body(req);authenticatePlayer(data.playerId,data.token);return json(res,201,{challenge:await createAsyncChallenge(data.playerId,data)});}
+    if(req.method==='POST'&&url.pathname.match(/^\/api\/async-challenges\/[^/]+\/accept$/)){const data=await body(req),id=url.pathname.split('/')[3];authenticatePlayer(data.playerId,data.token);return json(res,200,{challenge:await acceptAsyncChallenge(id,data.playerId)});}
+    if(req.method==='POST'&&url.pathname.match(/^\/api\/async-challenges\/[^/]+\/guess$/)){const data=await body(req),id=url.pathname.split('/')[3];authenticatePlayer(data.playerId,data.token);return json(res,200,await submitAsyncGuess(id,data.playerId,data.guess));}
+    if(req.method==='POST'&&url.pathname.match(/^\/api\/async-challenges\/[^/]+\/cancel$/)){const data=await body(req),id=url.pathname.split('/')[3];authenticatePlayer(data.playerId,data.token);return json(res,200,{challenge:await cancelAsyncChallenge(id,data.playerId)});}
+    if(req.method==='POST'&&url.pathname.match(/^\/api\/async-challenges\/[^/]+\/view$/)){const data=await body(req),id=url.pathname.split('/')[3];authenticatePlayer(data.playerId,data.token);const challenge=getAsyncChallenge(id,data.playerId);if(!challenge)throw new Error('Desafio não encontrado.');return json(res,200,{challenge});}
+    if(req.method==='POST'&&url.pathname.match(/^\/api\/rivalries\/[^/]+$/)){const data=await body(req);authenticatePlayer(data.playerId,data.token);return json(res,200,{rivalry:getRivalry(data.playerId,url.pathname.split('/')[3])});}
+    if(req.method==='POST'&&url.pathname==='/api/pvp/report'){const data=await body(req);authenticatePlayer(data.playerId,data.token);const rivalry=getRivalry(data.playerId,data.targetId);if(!rivalry.total)throw new Error('Só é possível denunciar um rival recente.');return json(res,201,{report:reportPlayer(data.playerId,data.targetId,data.reason)});}
     if(req.method==='GET'&&url.pathname==='/api/daily/rankings')return json(res,200,getDailyRanking(url.searchParams.get('mode')||'quarteto',url.searchParams.get('language')||'pt'));
     if(req.method==='POST'&&url.pathname==='/api/daily/start'){const data=await body(req);authenticatePlayer(data.playerId,data.token);return json(res,201,startDailyChallenge(data.playerId,data));}
     if(req.method==='POST'&&url.pathname==='/api/daily/guess'){const data=await body(req);authenticatePlayer(data.playerId,data.token);return json(res,200,submitDailyGuess(data.playerId,data.sessionId,data.guess));}
@@ -85,8 +94,8 @@ async function handler(req, res) {
     if(req.method==='POST'&&url.pathname==='/api/games/guess'){const data=await body(req);return json(res,200,submitGameGuess(data.sessionId,data.guess));}
     if(req.method==='POST'&&url.pathname==='/api/games/finish'){const data=await body(req);return json(res,200,finishGameSession(data.sessionId));}
     if(url.pathname==='/api/health'){const [database,redis]=await Promise.all([checkDatabase(),checkRedis()]);return json(res,200,{ok:true,date:new Date().toISOString(),realMoneyEnabled:REAL_MONEY_ENABLED,moneyRequested:MONEY_READINESS.requested,infrastructure:{database,redis},...getPlayerStoreStats()});}
-    let pathname = url.pathname === '/' ? '/index.html' : url.pathname;
-    const publicPath=pathname==='/index.html'||pathname.startsWith('/styles/')||pathname.startsWith('/scripts/');
+    let pathname = url.pathname === '/' ? '/index.html' : url.pathname==='/admin'?'/admin.html':url.pathname;
+    const publicPath=pathname==='/index.html'||pathname==='/admin.html'||pathname.startsWith('/styles/')||pathname.startsWith('/scripts/');
     if(!publicPath)return json(res,404,{error:'Recurso não encontrado.'});
     const safe = normalize(pathname).replace(/^(\.\.[/\\])+/, '');
     const file = join(root, safe);

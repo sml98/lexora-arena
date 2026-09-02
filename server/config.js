@@ -25,9 +25,9 @@ export const MONEY_CONFIG = Object.freeze({
   kycProviderAdapterReady: bool('KYC_PROVIDER_ADAPTER_READY'),
   platformCommissionPercent: integer('PLATFORM_COMMISSION_PERCENT', 15, { min: 0, max: 100 }),
   tournamentCommissionPercent: integer('TOURNAMENT_COMMISSION_PERCENT', 15, { min: 0, max: 100 }),
-  firstPlacePercent: integer('FIRST_PLACE_PERCENT', 50, { min: 0, max: 100 }),
+  firstPlacePercent: integer('FIRST_PLACE_PERCENT', 55, { min: 0, max: 100 }),
   secondPlacePercent: integer('SECOND_PLACE_PERCENT', 30, { min: 0, max: 100 }),
-  thirdPlacePercent: integer('THIRD_PLACE_PERCENT', 20, { min: 0, max: 100 }),
+  thirdPlacePercent: integer('THIRD_PLACE_PERCENT', 15, { min: 0, max: 100 }),
   minWithdrawalCents: integer('MIN_WITHDRAWAL_AMOUNT_CENTS', 1_000, { min: 1 }),
   withdrawalFeeCents: integer('WITHDRAWAL_FEE_CENTS', 0, { min: 0 }),
   dailyEntryLimitCents: integer('DEFAULT_DAILY_ENTRY_LIMIT_CENTS', 10_000, { min: 1 }),
@@ -82,6 +82,8 @@ export const CONFIG = Object.freeze({
   DUEL_ENTRY_CREDITS: 2,
   COUNTDOWN_MS: 3_000,
   RECONNECT_GRACE_MS: 15_000,
+  ASYNC_OFFER_AFTER_MS: integer('ASYNC_OFFER_AFTER_MS', 20_000, { min: 5_000, max: 120_000 }),
+  ASYNC_CHALLENGE_TTL_MS: integer('ASYNC_CHALLENGE_TTL_MS', 86_400_000, { min: 60_000, max: 604_800_000 }),
   MESSAGE_LIMIT_BYTES: 2_048,
   ACTIONS_PER_10_SECONDS: 30,
   MATCH_DURATIONS_MS: Object.freeze({ quarteto: integer('QUARTETO_MATCH_DURATION_MS', 120_000, { min: 30_000, max: 600_000 }), contexto: integer('CONTEXTO_MATCH_DURATION_MS', 120_000, { min: 30_000, max: 600_000 }) }),
@@ -90,7 +92,7 @@ export const CONFIG = Object.freeze({
     Object.freeze({ afterMs: 10_000, ratingRange: 200 }),
     Object.freeze({ afterMs: 20_000, ratingRange: 300 })
   ]),
-  ALLOWED_ENTRY_CENTS: Object.freeze([0, 200, 500, 1_000]),
+  ALLOWED_ENTRY_CENTS: Object.freeze([0, 500, 1_000, 2_000]),
   PLATFORM_FEE_PERCENT: 15,
   RATING_INITIAL: 1_000,
   RATING_K_FACTOR: 32,
@@ -113,7 +115,7 @@ export const CONFIG = Object.freeze({
   FEATURES: Object.freeze({
     realMoney: REAL_MONEY_ENABLED,
     tournaments: bool('ENABLE_TOURNAMENTS', true),
-    asyncPvp: bool('ENABLE_ASYNC_PVP', false),
+    asyncPvp: bool('ENABLE_ASYNC_PVP', true),
     dailyChallenges: bool('ENABLE_DAILY_CHALLENGES', true)
   })
 });

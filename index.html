@@ -6,39 +6,39 @@
   <meta name="theme-color" content="#02050a">
   <meta name="description" content="Léxora Arena — Quarteto, Contexto, rankings e torneios P2P entre jogadores reais.">
   <title>Léxora Arena — Prove que você é melhor</title>
-  <link rel="stylesheet" href="styles/main.css?v=10">
+  <link rel="stylesheet" href="styles/main.css?v=22">
 </head>
 <body>
   <div class="world" aria-hidden="true"><i></i><i></i><i></i></div>
   <aside class="sidebar" aria-label="Navegação principal">
-    <button class="brand" data-view="home" aria-label="Léxora Arena, início"><span class="brand-glyph">L</span><span><b>LÉXORA</b><small>ARENA DE PALAVRAS</small></span></button>
+    <button class="brand" data-view="home" aria-label="Léxora Arena, início"><span class="lexora-mark" aria-hidden="true"><span>L</span><i></i><em></em></span><span class="lexora-word"><strong>LÉ<span class="lexora-versus">X<i aria-hidden="true">VS</i></span>ORA</strong><small>ARENA PVP DE PALAVRAS</small></span></button>
     <nav>
-      <button class="active" data-view="home"><span>⌂</span>Início</button>
-      <button data-view="play"><span>⚡</span>Jogar</button>
-      <button data-view="tournaments"><span>♜</span>Torneios</button>
-      <button data-view="ranking"><span>▥</span>Ranking</button>
-      <button data-view="challenges"><span>◇</span>Desafios</button>
-      <button data-view="history"><span>↻</span>Histórico</button>
-      <button data-view="wallet"><span>◈</span>Carteira</button>
-      <button data-view="profile"><span>◎</span>Perfil</button>
+      <button class="active" data-view="home" aria-label="Início"><span>⌂</span>Início</button>
+      <button data-view="play" aria-label="Jogar"><span>⚡</span>Jogar</button>
+      <button data-view="tournaments" aria-label="Torneios"><span>♜</span>Torneios</button>
+      <button data-view="ranking" aria-label="Ranking"><span>▥</span>Ranking</button>
+      <button data-view="challenges" aria-label="Desafios"><span>◇</span>Desafios</button>
+      <button data-view="history" aria-label="Histórico"><span>↻</span>Histórico</button>
+      <button data-view="wallet" aria-label="Carteira"><span>◈</span>Carteira</button>
+      <button data-view="profile" aria-label="Perfil"><span>◎</span>Perfil</button>
     </nav>
     <div class="fair-card"><span>FAIR PLAY</span><b>Servidor autoritativo</b><small>Sem bots ocultos. Mesmas condições. Resultado auditável.</small></div>
   </aside>
 
   <div class="app-shell">
     <header class="topbar">
-      <div class="mobile-brand"><span class="brand-glyph">L</span><b>LÉXORA</b></div>
+      <div class="mobile-brand" aria-label="Léxora Arena"><span class="lexora-mark" aria-hidden="true"><span>L</span><i></i><em></em></span><span class="lexora-word"><strong>LÉ<span class="lexora-versus">X<i aria-hidden="true">VS</i></span>ORA</strong><small>JOGUE • PENSE • VENÇA</small></span></div>
       <div class="live-state"><i></i><span id="onlinePlayers">0 online</span></div>
       <div class="top-actions">
-        <button class="icon-button" id="soundBtn" aria-label="Alternar sons">♪</button>
+        <button class="icon-button" id="soundBtn" aria-label="Alternar sons" title="Ativar ou desativar efeitos sonoros">♪</button>
         <button class="wallet-chip" data-view="wallet"><small>CARTEIRA</small><strong id="balanceText">Modo grátis</strong></button>
         <button class="avatar-button" data-view="profile" aria-label="Abrir perfil"><span id="avatarInitial">J</span><i></i></button>
       </div>
     </header>
 
     <main>
-      <section id="lobby" class="screen active">
-        <section class="hero-panel" data-section="home">
+      <section id="lobby" class="screen active" data-active-view="home">
+        <section class="hero-panel" data-section="home" data-view-panel="home profile">
           <div class="hero-copy">
             <span class="eyebrow"><i></i> COMPETIÇÃO P2P • JOGADORES REAIS</span>
             <h1>PALAVRAS.<br><em>ESTRATÉGIA.</em><br><strong>VITÓRIA.</strong></h1>
@@ -55,12 +55,28 @@
           </article>
         </section>
 
-        <section class="play-section" id="playSection" data-section="play">
+        <section class="home-overview" data-view-panel="home" aria-label="Como funciona a Léxora Arena">
+          <article class="glass-card"><span class="overview-number">01</span><div><small>COMO FUNCIONA</small><h2>Habilidade contra habilidade.</h2><p>Escolha Quarteto ou Contexto, receba o mesmo desafio do rival e vença pelos critérios oficiais de cada modalidade. O servidor controla seed, tempo e resultado.</p></div></article>
+          <article class="glass-card"><span class="overview-number gold">85%</span><div><small>PREMIAÇÃO TRANSPARENTE</small><h2>O valor é calculado em centavos.</h2><p>Em uma partida premiada, 15% do pote bruto corresponde à taxa fixa da plataforma e 85% forma o prêmio. Nenhum saldo é alterado pelo navegador.</p></div></article>
+          <article class="glass-card"><span class="overview-number magenta">∞</span><div><small>RETENÇÃO COMPETITIVA</small><h2>Progresso que depende de jogo real.</h2><p>Ratings separados, rankings, rivalidades, revanche, melhor de três e torneios contínuos criam progressão sem bots ocultos ou atividade inventada.</p></div></article>
+          <article class="glass-card"><span class="overview-number green">✓</span><div><small>DINHEIRO PROTEGIDO</small><h2>Entrada bloqueada até o resultado.</h2><p>Quando homologado, o valor fica reservado até a conclusão. Expiração sem adversário devolve 100%, sem comissão. O modo financeiro atual permanece bloqueado.</p></div></article>
+        </section>
+
+        <section class="view-explainer transparency-panel glass-card" data-view-panel="home" aria-label="Exemplo transparente de premiação">
+          <header><div><span class="eyebrow">DO INÍCIO AO RESULTADO</span><h2>Uma partida clara em quatro etapas.</h2><p>O navegador mostra a experiência; o servidor valida as regras, o tempo, o resultado e qualquer movimentação financeira.</p></div><span class="status-badge">MODO FINANCEIRO BLOQUEADO</span></header>
+          <div class="explainer-split">
+            <ol class="step-list"><li><b>1</b><div><strong>Escolha o modo</strong><span>Quarteto ou Contexto, PT-BR, inglês ou misto.</span></div></li><li><b>2</b><div><strong>Encontre um humano</strong><span>A faixa de rating se expande com o tempo; nenhum bot entra na fila.</span></div></li><li><b>3</b><div><strong>Joguem o mesmo desafio</strong><span>Seed, duração e versão do motor são idênticas para os dois.</span></div></li><li><b>4</b><div><strong>Receba o resultado oficial</strong><span>Critérios de desempate, rating e prova de integridade vêm do servidor.</span></div></li></ol>
+            <div class="fee-example"><div class="fee-title"><span>EXEMPLO • 2 ENTRADAS DE R$ 10</span><strong>POTE BRUTO R$ 20,00</strong></div><div class="fee-bar" aria-label="85% para premiação e 15% para a plataforma"><span class="prize-share">85% PRÊMIO</span><span class="platform-share">15%</span></div><div class="fee-values"><div><small>VENCEDOR</small><strong>R$ 17,00</strong><span>85% do pote</span></div><div><small>PLATAFORMA</small><strong>R$ 3,00</strong><span>taxa fixa de 15%</span></div><div><small>SEM RIVAL</small><strong>R$ 10,00</strong><span>devolução integral</span></div></div><p>Valores meramente explicativos enquanto a carteira estiver bloqueada. Sem taxa oculta e sem cálculo em ponto flutuante.</p></div>
+          </div>
+        </section>
+
+        <section class="play-section" id="playSection" data-section="play" data-view-panel="play" hidden>
           <div class="section-title"><div><span class="eyebrow">ESCOLHA SUA ARENA</span><h2>Duas disciplinas. Um vencedor.</h2></div><p>O servidor cria um novo desafio para cada partida.</p></div>
           <div class="play-toolbar glass-card">
-            <div><small>TIPO DE PARTIDA</small><div class="segmented" id="matchTypeSelect"><button data-match-type="casual">CASUAL</button><button class="active" data-match-type="ranked">RANKED</button><button data-match-type="rewarded" disabled>PREMIADO</button></div></div>
+            <div><small>TIPO DE PARTIDA</small><div class="segmented" id="matchTypeSelect"><button data-match-type="casual">TREINAR GRÁTIS</button><button class="active" data-match-type="ranked">RANKED</button><button data-match-type="rewarded" disabled>PREMIADO</button></div></div>
             <div><small>SÉRIE</small><div class="segmented" id="bestOfSelect"><button class="active" data-best-of="1">PARTIDA ÚNICA</button><button data-best-of="3">MELHOR DE 3</button></div></div>
             <div><small>IDIOMA</small><div class="segmented" id="languageSelect"><button class="active" data-language="pt">PT-BR</button><button data-language="en">EN</button><button data-language="mixed">MISTO</button></div></div>
+            <div><small>ENTRADA PREMIADA</small><div class="segmented entry-values" id="entryValueSelect"><button data-entry-cents="500">R$ 5</button><button class="active popular" data-entry-cents="1000">R$ 10 <i>MAIS JOGADO</i></button><button data-entry-cents="2000">R$ 20</button></div></div>
           </div>
           <div class="game-grid">
             <article class="game-card quarteto-card spotlight">
@@ -76,24 +92,43 @@
               <button class="neon-button magenta" data-play="contexto">JOGAR CONTEXTO <b>››</b></button>
             </article>
           </div>
+          <section class="game-guides" aria-label="Como jogar cada modalidade">
+            <article class="mode-guide quarteto-guide glass-card"><header><span class="guide-icon">▦</span><div><small>GUIA RÁPIDO</small><h2>Como jogar Quarteto</h2></div></header><ol><li><b>01</b><span>Digite uma palavra válida de cinco letras.</span></li><li><b>02</b><span>A mesma tentativa alimenta quatro painéis simultaneamente.</span></li><li><b>03</b><span>Verde: posição correta. Amarelo: letra presente. Cinza: ausente.</span></li><li><b>04</b><span>Você tem 120 segundos e até nove tentativas.</span></li></ol><p><strong>Vence:</strong> quem resolver mais palavras; depois, menor tempo e menos tentativas.</p></article>
+            <article class="mode-guide contexto-guide glass-card"><header><span class="guide-icon">◎</span><div><small>GUIA RÁPIDO</small><h2>Como jogar Contexto</h2></div></header><ol><li><b>01</b><span>Digite palavras relacionadas ao conceito secreto.</span></li><li><b>02</b><span>Quanto menor a posição, mais perto você está do alvo.</span></li><li><b>03</b><span>Palavras repetidas são recusadas e não geram nova tentativa.</span></li><li><b>04</b><span>Você tem 120 segundos e até trinta tentativas.</span></li></ol><p><strong>Vence:</strong> quem descobrir primeiro; se ninguém descobrir, vale a melhor posição.</p></article>
+          </section>
         </section>
 
-        <section class="tournament-feature gold-card" data-section="tournaments">
+        <section class="tournament-feature gold-card" data-section="tournaments" data-view-panel="tournaments" hidden>
           <div class="trophy" aria-hidden="true">♜</div>
-          <div><span class="eyebrow gold">TORNEIOS</span><h2>Classificação, mata-mata e finais ao vivo.</h2><p>Quando houver um torneio real aberto, ele aparecerá aqui. Nenhuma vaga ou atividade é inventada.</p></div>
+          <div><span class="eyebrow gold">SPRINT & MASTER</span><h2>Classificação, mata-mata e finais ao vivo.</h2><p>Sprint: 32–64 jogadores e entrada de R$10. Master: 16–24 jogadores e entrada de R$50. Nenhuma vaga ou arrecadação é inventada.</p></div>
           <div class="tournament-list" id="tournamentGrid"><div class="empty-state"><span>◇</span><b>Nenhum torneio aberto</b><small>Volte em breve para a próxima competição.</small></div></div>
         </section>
 
+        <section class="view-explainer glass-card" data-view-panel="tournaments" hidden><header><div><span class="eyebrow gold">REGRAS DOS TORNEIOS</span><h2>Formato, mínimo real e distribuição pública.</h2></div></header><div class="explain-grid three"><article><span class="explain-symbol cyan">⚡</span><small>SPRINT</small><h3>32–64 jogadores</h3><p>Entrada prevista de R$ 10. Ao atingir o mínimo, começa uma contagem de três minutos. Classificatória seguida de mata-mata.</p></article><article><span class="explain-symbol magenta">♜</span><small>MASTER</small><h3>16–24 jogadores</h3><p>Ideal de vinte participantes e entrada prevista de R$ 50. O torneio só começa com o mínimo real confirmado.</p></article><article><span class="explain-symbol gold">%</span><small>EXEMPLO COM 32 × R$ 10</small><h3>R$ 272 em prêmios</h3><p>Pote R$ 320; taxa fixa R$ 48. Dos R$ 272 líquidos: 55% ao 1º, 30% ao 2º e 15% ao 3º.</p></article></div></section>
+
         <section class="dashboard-grid">
-          <article class="glass-card" data-section="challenges"><header><div><span class="eyebrow">DESAFIOS ABERTOS</span><h3>Enfrente alguém agora</h3></div><button class="glass-button" id="friendBtn">CRIAR DESAFIO</button></header><div id="challengeList" class="data-list"><div class="empty-state"><span>◇</span><b>Nenhum desafio aberto</b><small>Crie um link e convide um amigo.</small></div></div></article>
-          <article class="glass-card" data-section="ranking"><header><div><span class="eyebrow">RANKING GLOBAL</span><h3>Quem domina a arena</h3></div><div class="tiny-tabs"><button class="active" data-ranking-mode="quarteto">QUARTETO</button><button data-ranking-mode="contexto">CONTEXTO</button></div></header><ol class="ranking-list" id="rankingList"><li class="empty-state">Nenhuma partida ranqueada ainda.</li></ol></article>
+          <article class="glass-card async-card" data-section="challenges" data-view-panel="challenges" hidden><header><div><span class="eyebrow">PVP ASSÍNCRONO</span><h3>Jogue agora. Um humano responde depois.</h3></div><button class="neon-button cyan" id="asyncCreateBtn">CRIAR DESAFIO</button></header><div id="asyncChallengeList" class="data-list"><div class="empty-state"><span>⌛</span><b>Carregando desafios humanos</b><small>Nenhum resultado do primeiro jogador será revelado.</small></div></div></article>
+          <article class="glass-card" data-section="challenges" data-view-panel="challenges" hidden><header><div><span class="eyebrow">DESAFIOS ABERTOS</span><h3>Enfrente alguém agora</h3></div><button class="glass-button" id="friendBtn">CRIAR DESAFIO</button></header><div id="challengeList" class="data-list"><div class="empty-state"><span>◇</span><b>Nenhum desafio aberto</b><small>Crie um link e convide um amigo.</small></div></div></article>
+          <article class="glass-card" data-section="ranking" data-view-panel="ranking" hidden><header><div><span class="eyebrow">RANKING GLOBAL</span><h3>Quem domina a arena</h3></div><div class="tiny-tabs"><button class="active" data-ranking-mode="quarteto">QUARTETO</button><button data-ranking-mode="contexto">CONTEXTO</button></div></header><ol class="ranking-list" id="rankingList"><li class="empty-state">Nenhuma partida ranqueada ainda.</li></ol></article>
         </section>
 
-        <section class="glass-card history-panel" data-section="history"><header><div><span class="eyebrow">HISTÓRICO</span><h3>Suas partidas recentes</h3></div><button class="glass-button" id="shareLatestBtn" disabled>COMPARTILHAR</button></header><div id="recentMatches" class="data-list"><div class="empty-state"><span>↻</span><b>Nenhuma partida disputada</b><small>Seu primeiro resultado aparecerá aqui.</small></div></div></section>
+        <section class="view-explainer glass-card" data-view-panel="ranking" hidden><header><div><span class="eyebrow">COMO O RATING FUNCIONA</span><h2>Progressão separada e baseada em adversários reais.</h2></div><span class="status-badge cyan">INÍCIO: 1000 PONTOS</span></header><div class="explain-grid three"><article><span class="explain-symbol cyan">±</span><small>VARIAÇÃO</small><h3>Modelo Elo, fator 32</h3><p>Vencer alguém mais bem classificado rende mais. Perder para alguém de rating inferior custa mais pontos.</p></article><article><span class="explain-symbol magenta">Ⅱ</span><small>DUAS CARREIRAS</small><h3>Quarteto ≠ Contexto</h3><p>Cada modalidade possui rating e divisão próprios. Uma derrota em Contexto não altera seu Quarteto.</p></article><article><span class="explain-symbol acid">◇</span><small>DIVISÕES</small><h3>Bronze até Elite</h3><p>Você começa em Prata III. Ouro inicia em 1300, Diamante em 1800, Mestre em 2000 e Elite em 2250.</p></article></div></section>
 
-        <section class="finance-safety glass-card" id="financeStatus" data-section="wallet" aria-live="polite"><div><span class="eyebrow">CARTEIRA E PARTIDAS PREMIADAS</span><h2>Dinheiro real bloqueado com segurança</h2><p>A arquitetura de saldo, ledger e Pix permanece fail-closed. Nada financeiro é mostrado como ativo sem requisitos jurídicos, KYC, antifraude, PostgreSQL, Redis e provedor aprovados.</p></div><div class="finance-actions"><strong>FAIL-CLOSED</strong><button id="financeOpenBtn" class="neon-button cyan" hidden>ABRIR CARTEIRA</button></div></section>
+        <section class="view-explainer glass-card" data-view-panel="challenges" hidden><header><div><span class="eyebrow">TRÊS FORMAS DE COMPETIR</span><h2>Convite direto, fila ao vivo ou resposta assíncrona.</h2></div></header><div class="explain-grid three"><article><span class="explain-symbol cyan">⌁</span><small>AO VIVO</small><h3>Resposta imediata</h3><p>Os dois entram juntos, recebem a mesma seed e acompanham apenas o progresso público do rival.</p></article><article><span class="explain-symbol magenta">◇</span><small>CONVITE</small><h3>Link privado</h3><p>Crie um código e envie ao amigo. O desafio mantém modo, idioma e tipo de partida selecionados.</p></article><article><span class="explain-symbol acid">⌛</span><small>ASSÍNCRONO</small><h3>Jogue agora</h3><p>Seu resultado fica selado por até 24 horas. O segundo humano joga sem ver suas tentativas ou placar.</p></article></div></section>
 
-        <section class="fair-play-grid"><article><b>01</b><strong>MESMO DESAFIO</strong><span>Seed e regras idênticas.</span></article><article><b>02</b><strong>SERVIDOR AUTORITATIVO</strong><span>Segredos e placar no backend.</span></article><article><b>03</b><strong>SEM BOTS OCULTOS</strong><span>Fila exclusivamente P2P.</span></article><article><b>04</b><strong>RESULTADO AUDITÁVEL</strong><span>Commit e cadeia de eventos.</span></article></section>
+        <section class="glass-card history-panel" data-section="history" data-view-panel="history" hidden><header><div><span class="eyebrow">HISTÓRICO</span><h3>Partidas e rivalidades</h3></div><button class="glass-button" id="shareLatestBtn" disabled>COMPARTILHAR</button></header><div id="recentMatches" class="data-list"><div class="empty-state"><span>↻</span><b>Nenhuma partida disputada</b><small>Seu primeiro resultado aparecerá aqui.</small></div></div><h4 class="subsection-title">RIVAIS RECENTES</h4><div id="rivalryList" class="rivalry-list"><div class="empty-state"><small>As rivalidades surgem somente depois de partidas reais.</small></div></div><div class="history-explainer"><article><small>CADA RESULTADO MOSTRA</small><strong>Modo, rival, desempenho, data e rating</strong></article><article><small>RIVALIDADES</small><strong>Vitórias e derrotas separadas por modalidade</strong></article><article><small>COMPARTILHAMENTO</small><strong>Resumo sem expor palavras privadas do rival</strong></article></div></section>
+
+        <section class="profile-dashboard glass-card" data-view-panel="profile" hidden>
+          <header><div><span class="eyebrow">PERFIL COMPETITIVO</span><h2>Sua identidade na Arena</h2><p>Quarteto e Contexto possuem progressões independentes.</p></div></header>
+          <div class="profile-metrics"><article><small>PARTIDAS</small><strong id="profileGames">0</strong></article><article><small>VITÓRIAS</small><strong id="profileWins">0</strong></article><article><small>APROVEITAMENTO</small><strong id="profileWinRate">0%</strong></article><article><small>STATUS</small><strong>ATIVO</strong></article></div>
+          <div class="profile-path"><article><b>01</b><div><small>JOGUE RANKED</small><span>Partidas casuais treinam sem alterar seus pontos.</span></div></article><article><b>02</b><div><small>CONSTRUA DUAS CARREIRAS</small><span>Quarteto e Contexto evoluem separadamente.</span></div></article><article><b>03</b><div><small>CRIE RIVALIDADES</small><span>Revanche e melhor de três registram confrontos reais.</span></div></article></div>
+        </section>
+
+        <section class="finance-safety glass-card" id="financeStatus" data-section="wallet" data-view-panel="wallet" aria-live="polite" hidden><div><span class="eyebrow">CARTEIRA E PARTIDAS PREMIADAS</span><h2>Dinheiro real bloqueado com segurança</h2><p>A arquitetura de saldo, ledger e Pix permanece fail-closed. Nada financeiro é mostrado como ativo sem requisitos jurídicos, KYC, antifraude, PostgreSQL, Redis e provedor aprovados.</p></div><div class="finance-actions"><strong>FAIL-CLOSED</strong><button id="financeOpenBtn" class="neon-button cyan" hidden>ABRIR CARTEIRA</button></div></section>
+
+        <section class="view-explainer glass-card wallet-explainer" data-view-panel="wallet" hidden><header><div><span class="eyebrow">TRANSPARÊNCIA FINANCEIRA</span><h2>O que entra, o que fica bloqueado e o que é pago.</h2></div></header><div class="money-flow"><article><small>1. ENTRADAS</small><strong>R$ 10 + R$ 10</strong><span>R$ 20 de pote bruto</span></article><i>›</i><article><small>2. TAXA FIXA</small><strong>R$ 3</strong><span>15% para a plataforma</span></article><i>›</i><article><small>3. PRÊMIO</small><strong>R$ 17</strong><span>85% para o vencedor</span></article></div><p class="safety-note"><b>Proteção:</b> o valor permanece bloqueado durante a partida. Sem adversário ou torneio cancelado, a entrada é devolvida integralmente e nenhuma comissão é cobrada.</p></section>
+
+        <section class="fair-play-grid" data-view-panel="home"><article><b>01</b><strong>MESMO DESAFIO</strong><span>Seed e regras idênticas.</span></article><article><b>02</b><strong>SERVIDOR AUTORITATIVO</strong><span>Segredos e placar no backend.</span></article><article><b>03</b><strong>SEM BOTS OCULTOS</strong><span>Fila exclusivamente P2P.</span></article><article><b>04</b><strong>RESULTADO AUDITÁVEL</strong><span>Commit e cadeia de eventos.</span></article></section>
       </section>
 
       <section id="pvpArena" class="screen arena-screen" aria-live="polite">
@@ -110,11 +145,11 @@
     </main>
   </div>
 
-  <nav class="bottom-nav" aria-label="Navegação móvel"><button class="active" data-view="home"><span>⌂</span>Início</button><button data-view="play"><span>⚡</span>Jogar</button><button data-view="tournaments"><span>♜</span>Torneios</button><button data-view="ranking"><span>▥</span>Ranking</button><button data-view="profile"><span>◎</span>Perfil</button></nav>
+  <nav class="bottom-nav" aria-label="Navegação móvel"><button class="active" data-view="home"><span>⌂</span>Início</button><button data-view="play"><span>⚡</span>Jogar</button><button data-view="tournaments"><span>♜</span>Torneios</button><button data-view="ranking"><span>▥</span>Ranking</button><button data-view="challenges"><span>◇</span>Desafios</button><button data-view="history"><span>↻</span>Histórico</button><button data-view="wallet"><span>◈</span>Carteira</button><button data-view="profile"><span>◎</span>Perfil</button></nav>
   <div class="modal" id="modal" hidden><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="close" id="closeModal" aria-label="Fechar">×</button><span class="modal-icon" id="modalIcon">✦</span><h2 id="modalTitle">Tudo certo</h2><p id="modalText"></p><button class="neon-button cyan" id="modalAction">CONTINUAR</button></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="scripts/app.js?v=10"></script>
-  <script type="module" src="scripts/pvp.js?v=10"></script>
+  <script type="module" src="scripts/app.js?v=12"></script>
+  <script type="module" src="scripts/pvp.js?v=11"></script>
   <script type="module" src="scripts/finance.js?v=2"></script>
 </body>
 </html>

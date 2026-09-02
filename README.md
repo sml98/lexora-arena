@@ -9,10 +9,12 @@ Plataforma competitiva P2P focada exclusivamente em **Quarteto** e **Contexto**.
 - Quarteto competitivo: quatro palavras simultâneas, nove tentativas, 120 segundos e teclado próprio;
 - Contexto competitivo: corrida semântica determinística, 30 tentativas e bloqueio de palavras repetidas;
 - filas Casual e Ranked, com expansão de rating em ±100, ±200 e ±300;
+- PvP assíncrono humano com mesma seed, resultado do primeiro jogador selado, retomada e expiração;
 - ratings independentes `quartetoRating` e `contextoRating`, ambos iniciando em 1000;
 - divisões de Bronze III a Elite;
 - desafios por link, revanche e séries melhor de 3;
-- torneios de 8, 16, 32, 64 e 128 jogadores em formatos classificatório, mata-mata e híbrido;
+- Sprint de 32–64 jogadores, Master de 16–24 e torneios personalizados;
+- countdown depois do mínimo, próximo Sprint automático e pódio dinâmico 55% / 30% / 15%;
 - ranking separado por jogo e períodos diário, semanal, mensal e geral;
 - histórico e estatísticas por modalidade;
 - WebSocket, reconexão por 15 segundos e derrota por abandono;
@@ -20,6 +22,7 @@ Plataforma competitiva P2P focada exclusivamente em **Quarteto** e **Contexto**.
 - carteira em centavos, ledger append-only, settlement atômico e idempotência;
 - integração Pix Efí preparada, mas bloqueada por padrão;
 - PostgreSQL, Redis, migrations, health check, métricas e rotas administrativas protegidas;
+- painel `/admin` com usuários, DAU, pagantes, GMV, receita, transações, fraude e auditoria;
 - interface responsiva inspirada em arena eSports, com navegação mobile e `prefers-reduced-motion`.
 
 ## Requisitos
@@ -58,6 +61,17 @@ O terminal mostrará um endereço parecido com `http://192.168.1.50:8080`.
 
 Cada aba tenta obter uma identidade independente. Uma janela anônima é a forma mais simples de garantir duas sessões.
 
+## Testar PvP assíncrono
+
+1. Em **PvP assíncrono**, clique em **Criar desafio**.
+2. Jogue a rodada completa; o placar ficará selado no servidor.
+3. Abra uma janela anônima, volte à Home e aceite o desafio humano listado.
+4. Confirme que o segundo jogador não vê palavras, tentativas ou placar do primeiro.
+5. Ao concluir, confira as duas métricas, respostas e prova do compromisso.
+6. Recarregue durante sua rodada para validar a retomada.
+
+Na fila ao vivo, a alternativa assíncrona também aparece após 20 segundos sem pareamento. Desafios premiados reservam a entrada em `lockedBalance` e usam reembolso idempotente ao expirar; essa modalidade permanece bloqueada enquanto o modo financeiro não estiver homologado.
+
 ## Testar no celular
 
 1. Conecte computador e celular ao mesmo Wi-Fi.
@@ -83,7 +97,7 @@ npm audit
 npm run check
 ```
 
-A suíte cobre motores, feedback de letras repetidas, semântica, desempates, privacidade do adversário, matchmaking, ratings, BO3, desafios, antifraude, dinheiro em centavos, idempotência, migrations, WebSocket, reconexão e torneios.
+A suíte cobre motores, semântica, desempates, privacidade do adversário, matchmaking, PvP assíncrono, expiração, ratings, rivalidade, BO3, antifraude, dinheiro em centavos, idempotência, migrations, WebSocket, reconexão, Sprint e Master.
 
 ## PostgreSQL e Redis
 
@@ -110,7 +124,9 @@ As migrations são aplicadas em ordem a partir de [`migrations/`](migrations/). 
 - verificação dupla do webhook;
 - segredos fortes de sessão, criptografia e administração.
 
-As entradas disponíveis são R$ 2, R$ 5 e R$ 10. A comissão padrão é 15%. Para duas entradas de R$ 5, o backend calcula 1000 centavos de pote, 150 centavos de taxa e 850 centavos de prêmio. Nunca são usados números de ponto flutuante.
+As entradas disponíveis são R$ 5, R$ 10 e R$ 20; R$ 10 aparece como **mais jogado**. A comissão padrão é 15%. Para duas entradas de R$ 10, o backend calcula 2000 centavos de pote, 300 centavos de taxa e 1700 centavos de prêmio. Nunca são usados números de ponto flutuante.
+
+No Sprint com 32 participantes, o backend calcula GMV de 32.000 centavos, comissão de 4.800 e premiação de 27.200, distribuída em 14.960 / 8.160 / 4.080 centavos. O Master usa entrada de R$ 50 e a mesma comissão.
 
 Veja [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md), [`docs/PAYMENTS_EFI.md`](docs/PAYMENTS_EFI.md) e [`docs/SECURITY.md`](docs/SECURITY.md). As minutas de termos e privacidade não substituem revisão profissional.
 
@@ -126,6 +142,7 @@ server/
   rating-service.js        Elo e divisões
   tournament-service.js    formatos e brackets
   challenge-service.js     links e desafios abertos
+  async-pvp-service.js     seed selada, resultado oculto e expiração
   antifraud-service.js     sinais e fraudScore
   financial-service.js     ledger e settlement
 scripts/
@@ -134,6 +151,12 @@ scripts/
 migrations/                esquema PostgreSQL versionado
 tests/                     testes nativos do Node
 ```
+
+## Painel administrativo
+
+Defina `ADMIN_API_TOKEN` com pelo menos 32 caracteres e abra [http://localhost:8080/admin](http://localhost:8080/admin). O token permanece apenas em `sessionStorage`, nunca na URL. Com dinheiro real desativado, o painel mostra métricas competitivas reais e uma lista financeira vazia.
+
+O inventário KEEP / REFACTOR / REMOVE está em [`docs/PROJECT_AUDIT.md`](docs/PROJECT_AUDIT.md).
 
 ## Publicar no GitHub
 

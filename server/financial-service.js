@@ -21,7 +21,7 @@ export function calculateDuelMoney(entryCents, commissionPercent = MONEY_CONFIG.
 }
 
 export function calculateTournamentMoney({ size, entryCents, commissionPercent = MONEY_CONFIG.tournamentCommissionPercent, distribution = { first: MONEY_CONFIG.firstPlacePercent, second: MONEY_CONFIG.secondPlacePercent, third: MONEY_CONFIG.thirdPlacePercent } }) {
-  if (![8,16,32].includes(size)) throw new Error('Torneios financeiros aceitam 8, 16 ou 32 jogadores.');
+  if (!Number.isInteger(size) || size < 2 || size > 128) throw new Error('O torneio financeiro exige entre 2 e 128 jogadores.');
   if (Object.values(distribution).reduce((sum, value) => sum + value, 0) !== 100) throw new Error('A distribuição do pódio deve somar 100%.');
   const grossPotCents = size * positiveCents(entryCents);
   const commissionCents = Math.floor(grossPotCents * commissionPercent / 100);
@@ -145,6 +145,20 @@ export async function reserveDuelEntries({ matchId, playerIds, entryCents, idemp
   });
 }
 
+export async function reserveMatchEntry({matchId,userId,entryCents,idempotencyKey}){
+  assertRealMoneyReady('Reserva de entrada da partida assíncrona');const money=calculateDuelMoney(entryCents);
+  return withTransaction(async client=>{await assertEligible(client,userId,'match',money.entryCents);const inserted=await client.query(`INSERT INTO money_operations(user_id,kind,amount_cents,status,idempotency_key,match_id)
+    VALUES ($1,'match_reservation',$2,'confirmed',$3,$4) ON CONFLICT(kind,idempotency_key) DO NOTHING RETURNING id`,[userId,money.entryCents,idempotencyKey,matchId]);
+    if(!inserted.rows[0])return {...money,duplicate:true};await appendLedger(client,{operationId:inserted.rows[0].id,userId,bucket:'available',entryType:'match_entry_debit',amountCents:-money.entryCents,matchId});await appendLedger(client,{operationId:inserted.rows[0].id,userId,bucket:'locked',entryType:'match_entry_locked',amountCents:money.entryCents,matchId});return {...money,duplicate:false};});
+}
+
+export async function refundMatchEntry({matchId,userId,entryCents,idempotencyKey,reason='Desafio assíncrono expirado'}){
+  assertRealMoneyReady('Reembolso de entrada da partida assíncrona');const amount=positiveCents(entryCents);
+  return withTransaction(async client=>{const inserted=await client.query(`INSERT INTO money_operations(user_id,kind,amount_cents,status,idempotency_key,match_id,metadata)
+    VALUES ($1,'refund',$2,'refunded',$3,$4,$5) ON CONFLICT(kind,idempotency_key) DO NOTHING RETURNING id`,[userId,amount,idempotencyKey,matchId,JSON.stringify({reason})]);
+    if(!inserted.rows[0])return {amountCents:amount,duplicate:true};await appendLedger(client,{operationId:inserted.rows[0].id,userId,bucket:'locked',entryType:'match_refund_unlock',amountCents:-amount,matchId,reason});await appendLedger(client,{operationId:inserted.rows[0].id,userId,bucket:'available',entryType:'match_refund_available',amountCents:amount,matchId,reason});return {amountCents:amount,duplicate:false};});
+}
+
 export async function settleDuel({ matchId, playerIds, winnerId = null, tie = false, entryCents, idempotencyKey }) {
   assertRealMoneyReady('Liquidação do duelo');
   const money = calculateDuelMoney(entryCents);
@@ -223,18 +237,38 @@ export async function listAdminTransactions(limit = 100) {
   return result.rows;
 }
 
+export async function getFinancialBusinessMetrics(){
+  assertRealMoneyReady('Métricas financeiras');const [users,operations,matches]=await Promise.all([
+    getDatabase().query(`SELECT
+      (SELECT COUNT(*)::int FROM users) AS registered,
+      (SELECT COUNT(DISTINCT user_id)::int FROM auth_sessions
+        WHERE created_at>=now()-interval '1 day' AND revoked_at IS NULL) AS dau`),
+    getDatabase().query(`SELECT COUNT(DISTINCT user_id) FILTER (WHERE kind='match_reservation' AND status='confirmed')::int AS paying_users,
+      COUNT(*) FILTER (WHERE kind='deposit' AND status='completed')::int AS deposits,
+      COUNT(*) FILTER (WHERE kind='withdrawal' AND status IN ('sent','completed'))::int AS withdrawals,
+      COALESCE(AVG(amount_cents) FILTER (WHERE kind='match_reservation' AND status='confirmed'),0)::bigint AS average_entry_cents FROM money_operations`),
+    getDatabase().query(`SELECT COUNT(*) FILTER (WHERE financial AND status='ended')::int AS paid_matches,
+      COALESCE(SUM(gross_pot_cents) FILTER (WHERE financial AND status='ended' AND ended_at>=now()-interval '1 day'),0)::bigint AS gmv_today,
+      COALESCE(SUM(commission_cents) FILTER (WHERE financial AND status='ended' AND ended_at>=now()-interval '1 day'),0)::bigint AS revenue_today,
+      COALESCE(SUM(gross_pot_cents) FILTER (WHERE financial AND status='ended' AND ended_at>=now()-interval '7 days'),0)::bigint AS gmv_seven,
+      COALESCE(SUM(commission_cents) FILTER (WHERE financial AND status='ended' AND ended_at>=now()-interval '7 days'),0)::bigint AS revenue_seven,
+      COALESCE(SUM(gross_pot_cents) FILTER (WHERE financial AND status='ended' AND ended_at>=now()-interval '30 days'),0)::bigint AS gmv_thirty,
+      COALESCE(SUM(commission_cents) FILTER (WHERE financial AND status='ended' AND ended_at>=now()-interval '30 days'),0)::bigint AS revenue_thirty FROM matches`)
+  ]),u=users.rows[0],o=operations.rows[0],m=matches.rows[0];return {registeredUsers:u.registered,dailyActiveUsers:u.dau,payingUsers:o.paying_users,deposits:o.deposits,withdrawals:o.withdrawals,paidMatches:m.paid_matches,averageEntryValueCents:Number(o.average_entry_cents),periods:{today:{gmvCents:Number(m.gmv_today),platformRevenueCents:Number(m.revenue_today)},sevenDays:{gmvCents:Number(m.gmv_seven),platformRevenueCents:Number(m.revenue_seven)},thirtyDays:{gmvCents:Number(m.gmv_thirty),platformRevenueCents:Number(m.revenue_thirty)}}};
+}
+
 export async function createFinancialTournament(input) {
   assertRealMoneyReady('Criação de torneio financeiro');
-  const size=Number.parseInt(input.size,10),entryCents=positiveCents(input.entryCents),money=calculateTournamentMoney({size,entryCents});
-  const result=await getDatabase().query(`INSERT INTO tournaments(name,size,mode,entry_cents,status,minimum_players,commission_percent,prize_distribution,starts_at)
-    VALUES ($1,$2,$3,$4,'registration',$5,$6,$7,$8) RETURNING *`,[String(input.name||'Torneio Lexora').slice(0,100),size,['quarteto','contexto'].includes(input.mode)?input.mode:'quarteto',entryCents,Number.parseInt(input.minimumPlayers||size,10),money.commissionPercent,JSON.stringify({first:MONEY_CONFIG.firstPlacePercent,second:MONEY_CONFIG.secondPlacePercent,third:MONEY_CONFIG.thirdPlacePercent}),new Date(input.startsAt||Date.now()+3_600_000)]);
+  const kind=['sprint','master'].includes(input.kind)?input.kind:'custom',size=Number.parseInt(input.size||(kind==='sprint'?64:kind==='master'?24:8),10),minimumPlayers=Number.parseInt(input.minimumPlayers||(kind==='sprint'?32:kind==='master'?16:size),10),idealPlayers=Number.parseInt(input.idealPlayers||(kind==='master'?20:size),10),entryCents=positiveCents(input.entryCents||(kind==='sprint'?1000:kind==='master'?5000:0)),money=calculateTournamentMoney({size:minimumPlayers,entryCents});
+  const result=await getDatabase().query(`INSERT INTO tournaments(name,kind,size,maximum_players,ideal_players,mode,entry_cents,status,minimum_players,commission_percent,prize_distribution,starts_at)
+    VALUES ($1,$2,$3,$3,$4,$5,$6,'registration',$7,$8,$9,$10) RETURNING *`,[String(input.name||'Torneio Lexora').slice(0,100),kind,size,idealPlayers,['quarteto','contexto'].includes(input.mode)?input.mode:'quarteto',entryCents,minimumPlayers,money.commissionPercent,JSON.stringify({first:MONEY_CONFIG.firstPlacePercent,second:MONEY_CONFIG.secondPlacePercent,third:MONEY_CONFIG.thirdPlacePercent}),new Date(input.startsAt||Date.now()+3_600_000)]);
   return {...result.rows[0],money};
 }
 
 export async function listFinancialTournaments() {
   if(!REAL_MONEY_ENABLED)return [];
   const result=await getDatabase().query(`SELECT t.*,COUNT(e.user_id)::int AS registered FROM tournaments t LEFT JOIN tournament_entries e ON e.tournament_id=t.id AND e.status='confirmed' GROUP BY t.id ORDER BY t.starts_at`);
-  return result.rows.map(tournament=>({...tournament,entry_cents:Number(tournament.entry_cents),quote:calculateTournamentMoney({size:tournament.size,entryCents:Number(tournament.entry_cents),commissionPercent:tournament.commission_percent,distribution:tournament.prize_distribution})}));
+  return result.rows.map(tournament=>({...tournament,entry_cents:Number(tournament.entry_cents),quote:calculateTournamentMoney({size:Math.max(2,tournament.registered),entryCents:Number(tournament.entry_cents),commissionPercent:tournament.commission_percent,distribution:tournament.prize_distribution})}));
 }
 
 export async function joinFinancialTournament(userId,tournamentId,idempotencyKey) {
@@ -252,7 +286,7 @@ export async function joinFinancialTournament(userId,tournamentId,idempotencyKey
     await appendLedger(client,{operationId:operation.rows[0].id,userId,bucket:'available',entryType:'tournament_entry_debit',amountCents:-Number(tournament.entry_cents),tournamentId});
     await appendLedger(client,{operationId:operation.rows[0].id,userId,bucket:'locked',entryType:'tournament_entry_locked',amountCents:Number(tournament.entry_cents),tournamentId});
     await client.query("INSERT INTO tournament_entries(tournament_id,user_id,operation_id,status) VALUES ($1,$2,$3,'confirmed')",[tournamentId,userId,operation.rows[0].id]);
-    if(count.rows[0].total+1===tournament.size)await client.query("UPDATE tournaments SET status='active' WHERE id=$1",[tournamentId]);
+    const registered=count.rows[0].total+1;if(registered>=tournament.size)await client.query("UPDATE tournaments SET status='active',starts_at=now() WHERE id=$1",[tournamentId]);else if(registered>=tournament.minimum_players&&!tournament.countdown_started_at)await client.query("UPDATE tournaments SET countdown_started_at=now(),starts_at=now()+interval '3 minutes' WHERE id=$1",[tournamentId]);
     return {duplicate:false,tournamentId,registered:count.rows[0].total+1,size:tournament.size};
   });
 }
@@ -264,7 +298,7 @@ export async function cancelFinancialTournament(tournamentId,reason,idempotencyK
     if(!tournament)throw new Error('Torneio não encontrado.');
     if(['completed','cancelled'].includes(tournament.status))return {duplicate:true,status:tournament.status};
     const operation=await client.query(`INSERT INTO money_operations(kind,amount_cents,status,idempotency_key,tournament_id,metadata)
-      VALUES ('tournament_settlement',$1,'refunded',$2,$3,$4) ON CONFLICT(kind,idempotency_key) DO NOTHING RETURNING id`,[Number(tournament.entry_cents)*tournament.size,idempotencyKey,tournamentId,JSON.stringify({reason})]);
+      VALUES ('tournament_settlement',$1,'refunded',$2,$3,$4) ON CONFLICT(kind,idempotency_key) DO NOTHING RETURNING id`,[Number(tournament.entry_cents)*Math.max(1,Number(tournament.minimum_players)),idempotencyKey,tournamentId,JSON.stringify({reason})]);
     if(!operation.rows[0])return {duplicate:true,status:'cancelled'};
     const entries=await client.query("SELECT user_id FROM tournament_entries WHERE tournament_id=$1 AND status='confirmed' ORDER BY user_id",[tournamentId]);
     for(const entry of entries.rows){await appendLedger(client,{operationId:operation.rows[0].id,userId:entry.user_id,bucket:'locked',entryType:'tournament_cancel_unlock',amountCents:-Number(tournament.entry_cents),tournamentId});await appendLedger(client,{operationId:operation.rows[0].id,userId:entry.user_id,bucket:'available',entryType:'tournament_cancel_refund',amountCents:Number(tournament.entry_cents),tournamentId});}
@@ -280,10 +314,10 @@ export async function settleFinancialTournament(tournamentId,podium,idempotencyK
     const tournamentResult=await client.query("SELECT * FROM tournaments WHERE id=$1 FOR UPDATE",[tournamentId]),tournament=tournamentResult.rows[0];
     if(!tournament||tournament.status!=='active')throw new Error('Torneio ativo não encontrado.');
     const entries=await client.query("SELECT user_id FROM tournament_entries WHERE tournament_id=$1 AND status='confirmed' ORDER BY user_id",[tournamentId]);
-    if(entries.rows.length!==tournament.size)throw new Error('A chave não está completa.');
+    if(entries.rows.length<Number(tournament.minimum_players))throw new Error('O mínimo de participantes não foi atingido.');
     const entrants=new Set(entries.rows.map(row=>row.user_id)),winners=[podium.first,podium.second,podium.third];
     if(new Set(winners).size!==3||winners.some(id=>!entrants.has(id)))throw new Error('Pódio inválido.');
-    const money=calculateTournamentMoney({size:tournament.size,entryCents:Number(tournament.entry_cents),commissionPercent:tournament.commission_percent,distribution:tournament.prize_distribution});
+    const money=calculateTournamentMoney({size:entries.rows.length,entryCents:Number(tournament.entry_cents),commissionPercent:tournament.commission_percent,distribution:tournament.prize_distribution});
     const operation=await client.query(`INSERT INTO money_operations(kind,amount_cents,status,idempotency_key,tournament_id,metadata)
       VALUES ('tournament_settlement',$1,'completed',$2,$3,$4) ON CONFLICT(kind,idempotency_key) DO NOTHING RETURNING id`,[money.grossPotCents,idempotencyKey,tournamentId,JSON.stringify({podium})]);
     if(!operation.rows[0])return {...money,duplicate:true};
@@ -293,6 +327,12 @@ export async function settleFinancialTournament(tournamentId,podium,idempotencyK
     await client.query("UPDATE tournaments SET status='completed',settled_at=now() WHERE id=$1",[tournamentId]);
     return {...money,duplicate:false};
   });
+}
+
+export async function activateReadyFinancialTournaments(){
+  assertRealMoneyReady('Ativação de torneios');const result=await getDatabase().query(`UPDATE tournaments t SET status='active'
+    WHERE t.status='registration' AND t.starts_at<=now() AND (SELECT COUNT(*) FROM tournament_entries e WHERE e.tournament_id=t.id AND e.status='confirmed')>=t.minimum_players
+    RETURNING t.id,t.kind,t.mode,t.name`);return result.rows;
 }
 
 export async function reconcilePendingPayments(provider=createPaymentProvider()) {

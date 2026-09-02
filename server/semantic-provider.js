@@ -10,6 +10,7 @@ export class SemanticProvider {
   getSimilarity(){throw new Error('SemanticProvider.getSimilarity precisa ser implementado.');}
   getRank(){throw new Error('SemanticProvider.getRank precisa ser implementado.');}
   getClosestWords(){throw new Error('SemanticProvider.getClosestWords precisa ser implementado.');}
+  getWordMetadata(){throw new Error('SemanticProvider.getWordMetadata precisa ser implementado.');}
   getMetadata(){throw new Error('SemanticProvider.getMetadata precisa ser implementado.');}
 }
 
@@ -29,6 +30,7 @@ export class LocalSemanticProvider extends SemanticProvider {
   }
   getSimilarity(targetWord,guessedWord,context={}){const rank=this.getRank(targetWord,guessedWord,context);return Math.max(0,1-Math.log10(rank)/4);}
   getClosestWords(_targetWord,context={},limit=10){return (context.near||[]).slice(0,Math.max(0,limit));}
+  getWordMetadata(word){const normalized=normalize(word);return {normalized,length:normalized.length,valid:this.validateWord(normalized),language:'und'};}
   getMetadata(){return {provider:'local',version:this.version,deterministic:true,cache:redisConfigured()?'redis+memory':'memory'};}
 }
 
